@@ -15,7 +15,7 @@ export const SESSION_PHASES = [
   { key: "constitution", label: "헌법 제정", note: "정책 선택과 제출" },
   { key: "result", label: "결과 확인", note: "1차 룰렛과 결과 검토" },
   { key: "revision", label: "새 헌법 토론", note: "결과를 바탕으로 재토론" },
-  { key: "final", label: "결과 확인 및 발표", note: "최종 룰렛과 발표" }
+  { key: "final", label: "최종 결과 및 발표", note: "수정 헌법 비교와 발표" }
 ];
 
 export const INPUT_OPEN_PHASES = ["constitution", "revision"];

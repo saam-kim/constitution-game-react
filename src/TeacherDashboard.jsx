@@ -291,7 +291,7 @@ function PhaseControls({ phase, onChange, groups, selectedGroupId, onSelectGroup
           <h2 className="panel-heading">{phaseLabel(phase)}</h2>
         </div>
         <p className="text-sm font-bold muted">
-          토론 → 헌법 제정 → 결과 확인 → 새 헌법 토론 → 결과 확인 및 발표
+          토론 → 헌법 제정 → 결과 확인 → 새 헌법 토론 → 최종 결과 및 발표
         </p>
       </div>
 
@@ -617,6 +617,7 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
   const connectedCount = groupList.filter(group => group.connected).length;
   const groupLocked = Boolean(session?.groupLocked);
   const isRunning = session?.status === "running";
+  const isFinalPhase = phase === "final";
 
   const chartData = selectedGroup?.constitution
     ? [
@@ -695,6 +696,18 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
 
   const handleRoulette = async () => {
     if (!selectedGroup?.id || rolling || !selectedGroup.isSubmitted) return;
+
+    const finalCheck = phase === "final" && selectedGroup.assignedClass;
+
+    if (finalCheck) {
+      const outcome = await runRoulette(selectedGroup.id);
+
+      if (outcome?.picked?.label) {
+        setSlotText(outcome.picked.label);
+      }
+
+      return;
+    }
 
     setRolling(true);
     const labels = [
@@ -977,7 +990,15 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
                   onClick={handleRoulette}
                   className="button-primary h-20 w-full text-2xl"
                 >
-                  미래의 나 카드 공개
+                  {selectedGroup?.rouletteDone
+                    ? isFinalPhase
+                      ? "최종 결과 확인 완료"
+                      : "미래의 나 공개 완료"
+                    : rolling
+                      ? "미래의 나 공개 중"
+                      : isFinalPhase
+                        ? "최종 결과 확인"
+                        : "미래의 나 카드 공개"}
                 </button>
 
                 <div className="metric-card mt-5 text-center">
@@ -1044,7 +1065,9 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
                 </div>
               ) : (
                 <div className="flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-soft)] text-2xl font-bold text-[var(--color-text-muted)]">
-                  룰렛 이후 결과 점수가 표시됩니다.
+                  {isFinalPhase
+                    ? "최종 결과 확인 후 점수가 표시됩니다."
+                    : "룰렛 이후 결과 점수가 표시됩니다."}
                 </div>
               )}
             </div>
