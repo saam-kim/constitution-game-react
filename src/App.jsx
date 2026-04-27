@@ -2,7 +2,7 @@ import { useState } from "react";
 import FirebaseSetupPanel from "./FirebaseSetupPanel";
 import StudentApp from "./StudentApp";
 import TeacherDashboard from "./TeacherDashboard";
-import { getAppPath } from "./routes";
+import { getAppPath, getRouteParams } from "./routes";
 
 export const TEACHER_PIN = "1234";
 
@@ -122,7 +122,7 @@ function StartScreen() {
 }
 
 export default function App() {
-  const params = new URLSearchParams(window.location.search);
+  const params = getRouteParams();
   const role = params.get("role");
   const pin = params.get("pin") || "";
   const groupId = params.get("groupId") || "group_1";
