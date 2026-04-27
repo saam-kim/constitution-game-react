@@ -2,6 +2,7 @@ import { useState } from "react";
 import FirebaseSetupPanel from "./FirebaseSetupPanel";
 import StudentApp from "./StudentApp";
 import TeacherDashboard from "./TeacherDashboard";
+import { getAppPath } from "./routes";
 
 export const TEACHER_PIN = "1234";
 
@@ -17,17 +18,18 @@ function StartScreen() {
       return;
     }
 
-    const params = new URLSearchParams();
-    params.set("role", role);
-
     if (role === "teacher") {
-      params.set("teacherPin", TEACHER_PIN);
+      window.location.href = getAppPath({
+        role,
+        teacherPin: TEACHER_PIN
+      });
     } else {
-      if (pin) params.set("pin", pin);
-      params.set("groupId", groupId);
+      window.location.href = getAppPath({
+        role,
+        pin,
+        groupId
+      });
     }
-
-    window.location.href = `/?${params.toString()}`;
   };
 
   return (

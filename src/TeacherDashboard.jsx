@@ -13,6 +13,7 @@ import {
   RadialBar
 } from "recharts";
 import { SESSION_PHASES, useGameData } from "./useGameData";
+import { getAppPath, getAppUrl } from "./routes";
 
 const COLORS = ["#1B6BFF", "#2E7D4F", "#0A2E7A"];
 const SESSION_SECONDS = 5 * 60;
@@ -44,12 +45,10 @@ const phaseLabel = phase =>
   SESSION_PHASES.find(item => item.key === phase)?.label ?? "토론";
 
 const getStudentUrl = (pin, groupId) => {
-  const origin = typeof window === "undefined" ? "" : window.location.origin;
-  return `${origin}/?role=student&pin=${pin}&groupId=${groupId}`;
+  return getAppUrl({ role: "student", pin, groupId });
 };
 
-const getHomeUrl = () =>
-  typeof window === "undefined" ? "" : window.location.origin;
+const getHomeUrl = () => getAppUrl();
 
 const getQrUrl = value =>
   `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(value)}`;
@@ -652,7 +651,11 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
       const newPin = typeof created === "string" ? created : created.pin;
       setCreatedPin(newPin);
       window.sessionStorage.removeItem(AUTO_CREATE_LOCK_KEY);
-      const teacherUrl = `/?role=teacher&teacherPin=${TEACHER_PIN}&pin=${newPin}`;
+      const teacherUrl = getAppPath({
+        role: "teacher",
+        teacherPin: TEACHER_PIN,
+        pin: newPin
+      });
       window.history.replaceState(null, "", teacherUrl);
       window.location.reload();
     } catch (err) {
@@ -740,7 +743,7 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
           <button
             type="button"
             onClick={() => {
-              window.location.href = "/";
+              window.location.href = getAppPath();
             }}
             className="button-secondary mt-6 h-14 w-full text-lg"
           >
