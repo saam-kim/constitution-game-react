@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FirebaseSetupPanel from "./FirebaseSetupPanel";
 import StudentApp from "./StudentApp";
 import TeacherDashboard from "./TeacherDashboard";
@@ -122,6 +122,20 @@ function StartScreen() {
 }
 
 export default function App() {
+  const [, setRouteVersion] = useState(0);
+
+  useEffect(() => {
+    const refreshRoute = () => setRouteVersion(version => version + 1);
+
+    window.addEventListener("hashchange", refreshRoute);
+    window.addEventListener("popstate", refreshRoute);
+
+    return () => {
+      window.removeEventListener("hashchange", refreshRoute);
+      window.removeEventListener("popstate", refreshRoute);
+    };
+  }, []);
+
   const params = getRouteParams();
   const role = params.get("role");
   const pin = params.get("pin") || "";
