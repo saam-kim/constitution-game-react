@@ -1,0 +1,32 @@
+{
+  "sessions": {
+    "123456": {
+      "pin": "123456",
+      "status": "waiting",
+      "phase": "draft",
+      "createdAt": 1710000000000,
+      "durationSeconds": 780,
+      "endsAt": 1710000780000,
+      "selectedGroupId": null,
+      "groups": {
+        "group_1": {
+          "id": "group_1",
+          "name": "1모둠",
+          "connected": false,
+          "joinedAt": null,
+          "lastSeen": null,
+          "isSubmitted": false,
+          "submittedAt": null,
+          "constitution": {
+            "taxRate": 35,
+            "welfareBudget": 25,
+            "minimumWage": 11000
+          },
+          "assignedClass": null,
+          "rouletteDone": false,
+          "result": null
+        }
+      }
+    }
+  }
+}
