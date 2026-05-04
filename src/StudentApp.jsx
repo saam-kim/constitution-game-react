@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BUDGET_DIRECTION_OPTIONS,
   SESSION_PHASES,
+  TAX_POLICY_OPTIONS,
+  WAGE_POLICY_OPTIONS,
+  getTaxPolicy,
   getBudgetDirection,
+  getWagePolicy,
   useGameData
 } from "./useGameData";
 
@@ -17,9 +21,9 @@ const getPhaseLabel = phase =>
 
 const POLICY_INFO = {
   taxRate: {
-    title: "최고 소득세율",
+    title: "세금 정책 방향",
     body:
-      "소득이 높은 사람에게 적용되는 가장 높은 세율입니다. 세율이 높으면 복지 재원이 늘 수 있지만, 고소득층의 자산 증가에는 부담이 될 수 있습니다."
+      "세금을 낮게 둘지, 모두가 넓게 부담할지, 소득이 높은 사람이 더 책임질지 정합니다. 자유와 공동체 책임을 함께 따져 보세요."
   },
   welfareBudget: {
     title: "국가 예산 방향",
@@ -27,27 +31,29 @@ const POLICY_INFO = {
       "국가 예산을 성장, 기본 생활 보장, 기회 투자 중 어디에 우선 둘지 정합니다. 자유로운 경제 활동과 평등한 출발 조건을 함께 따져 보세요."
   },
   minimumWage: {
-    title: "최저임금",
+    title: "최저임금 방향",
     body:
-      "노동자에게 법적으로 보장되는 시간당 최저 임금입니다. 높이면 저임금 노동자의 생활 안정에 도움이 되지만, 사업자의 비용 부담도 커질 수 있습니다."
+      "임금을 시장에 더 맡길지, 천천히 올릴지, 기본 생활을 보장할 만큼 높게 둘지 정합니다. 일자리 기회와 생활 안정을 함께 보세요."
   }
 };
 
 const SUBMIT_CHECKS = [
   "가장 불리한 위치에 태어나도 받아들일 수 있는 규칙인가요?",
   "세금 부담과 예산 방향을 납득할 수 있게 정했나요?",
-  "최저임금이 노동자와 고용자 모두에게 감당 가능한가요?"
+  "최저임금 방향이 노동자와 고용자 모두에게 감당 가능한가요?"
 ];
+
+const formatTaxPolicy = constitution => getTaxPolicy(constitution).label;
 
 const formatBudgetDirection = constitution =>
   getBudgetDirection(constitution).label;
 
+const formatWagePolicy = constitution => getWagePolicy(constitution).label;
+
 const formatPolicySummary = constitution =>
-  `세율 ${constitution?.taxRate ?? "-"}% · 예산 방향 ${formatBudgetDirection(
+  `세금 ${formatTaxPolicy(constitution)} · 예산 방향 ${formatBudgetDirection(
     constitution
-  )} · 최저임금 ${
-    constitution?.minimumWage?.toLocaleString("ko-KR") ?? "-"
-  }원`;
+  )} · 최저임금 ${formatWagePolicy(constitution)}`;
 
 function PolicyInfo({ item }) {
   return (
@@ -196,100 +202,26 @@ function PresentationCard({ group }) {
   );
 }
 
-function NumberControl({
-  label,
-  value,
-  min,
-  max,
-  step,
-  suffix,
-  info,
-  onChange,
-  disabled
-}) {
-  const setValue = next => onChange(Math.min(max, Math.max(min, next)));
-
+function PolicyChoiceControl({ label, valueLabel, options, selectedKey, info, disabled, onChange }) {
   return (
     <section className="control-card">
       <div className="mb-5 flex items-center justify-between gap-4">
         <h2 className="panel-heading">{label}</h2>
-        <div className="value-pill">
-          {value.toLocaleString("ko-KR")}
-          {suffix}
-        </div>
-      </div>
-
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        disabled={disabled}
-        onChange={e => setValue(Number(e.target.value))}
-        className="h-4 w-full accent-[var(--color-brand)]"
-      />
-
-      <div className="range-row">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => setValue(value - step)}
-          className="step-button"
-          aria-label={`${label} 감소`}
-        >
-          -
-        </button>
-
-        <div className="text-center text-base font-bold muted">
-          {min.toLocaleString("ko-KR")}
-          {suffix} - {max.toLocaleString("ko-KR")}
-          {suffix}
-        </div>
-
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => setValue(value + step)}
-          className="step-button"
-          aria-label={`${label} 증가`}
-        >
-          +
-        </button>
-      </div>
-
-      <PolicyInfo item={info} />
-    </section>
-  );
-}
-
-function BudgetDirectionControl({ value, disabled, onChange }) {
-  const selected = getBudgetDirection(value);
-
-  return (
-    <section className="control-card">
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <h2 className="panel-heading">국가 예산 방향</h2>
         <div className="value-pill value-pill-text">
-          {selected.shortLabel}
+          {valueLabel}
         </div>
       </div>
 
       <div className="choice-grid">
-        {BUDGET_DIRECTION_OPTIONS.map(option => {
-          const active = option.key === selected.key;
+        {options.map(option => {
+          const active = option.key === selectedKey;
 
           return (
             <button
               key={option.key}
               type="button"
               disabled={disabled}
-              onClick={() =>
-                onChange({
-                  budgetDirection: option.key,
-                  welfareBudget: option.welfareBudget
-                })
-              }
+              onClick={() => onChange(option)}
               className={`choice-card ${active ? "active" : ""}`}
             >
               <span>{option.label}</span>
@@ -299,7 +231,7 @@ function BudgetDirectionControl({ value, disabled, onChange }) {
         })}
       </div>
 
-      <PolicyInfo item={POLICY_INFO.welfareBudget} />
+      <PolicyInfo item={info} />
     </section>
   );
 }
@@ -317,9 +249,11 @@ export default function StudentApp({ pin, groupId }) {
   } = useGameData(pin, groupId);
 
   const [constitution, setConstitution] = useState({
+    taxPolicy: "shared",
     taxRate: 35,
     budgetDirection: "opportunity",
     welfareBudget: 28,
+    wagePolicy: "gradual",
     minimumWage: 11000
   });
   const [checkedItems, setCheckedItems] = useState([]);
@@ -330,11 +264,17 @@ export default function StudentApp({ pin, groupId }) {
 
   useEffect(() => {
     if (group?.constitution) {
+      const taxPolicy = getTaxPolicy(group.constitution);
       const budgetDirection = getBudgetDirection(group.constitution);
+      const wagePolicy = getWagePolicy(group.constitution);
       setConstitution({
         ...group.constitution,
+        taxPolicy: taxPolicy.key,
+        taxRate: taxPolicy.taxRate,
         budgetDirection: budgetDirection.key,
-        welfareBudget: budgetDirection.welfareBudget
+        welfareBudget: budgetDirection.welfareBudget,
+        wagePolicy: wagePolicy.key,
+        minimumWage: wagePolicy.minimumWage
       });
     }
   }, [group?.constitution]);
@@ -352,13 +292,15 @@ export default function StudentApp({ pin, groupId }) {
   const canSubmit = useMemo(() => {
     return (
       inputOpen &&
-      constitution.taxRate >= 0 &&
-      constitution.taxRate <= 70 &&
+      TAX_POLICY_OPTIONS.some(
+        option => option.key === getTaxPolicy(constitution).key
+      ) &&
       BUDGET_DIRECTION_OPTIONS.some(
         option => option.key === getBudgetDirection(constitution).key
       ) &&
-      constitution.minimumWage >= 8000 &&
-      constitution.minimumWage <= 15000 &&
+      WAGE_POLICY_OPTIONS.some(
+        option => option.key === getWagePolicy(constitution).key
+      ) &&
       allChecked
     );
   }, [constitution, inputOpen, allChecked]);
@@ -428,34 +370,49 @@ export default function StudentApp({ pin, groupId }) {
       )}
 
       <div className="mt-6 grid gap-5">
-        <NumberControl
-          label="최고 소득세율"
-          value={constitution.taxRate}
-          min={0}
-          max={70}
-          step={1}
-          suffix="%"
+        <PolicyChoiceControl
+          label="세금 정책 방향"
+          valueLabel={getTaxPolicy(constitution).shortLabel}
+          options={TAX_POLICY_OPTIONS}
+          selectedKey={getTaxPolicy(constitution).key}
           info={POLICY_INFO.taxRate}
           disabled={controlsDisabled}
-          onChange={taxRate => changeValue({ taxRate })}
+          onChange={option =>
+            changeValue({
+              taxPolicy: option.key,
+              taxRate: option.taxRate
+            })
+          }
         />
 
-        <BudgetDirectionControl
-          value={constitution}
+        <PolicyChoiceControl
+          label="국가 예산 방향"
+          valueLabel={getBudgetDirection(constitution).shortLabel}
+          options={BUDGET_DIRECTION_OPTIONS}
+          selectedKey={getBudgetDirection(constitution).key}
+          info={POLICY_INFO.welfareBudget}
           disabled={controlsDisabled}
-          onChange={changeValue}
+          onChange={option =>
+            changeValue({
+              budgetDirection: option.key,
+              welfareBudget: option.welfareBudget
+            })
+          }
         />
 
-        <NumberControl
-          label="최저임금"
-          value={constitution.minimumWage}
-          min={8000}
-          max={15000}
-          step={500}
-          suffix="원"
+        <PolicyChoiceControl
+          label="최저임금 방향"
+          valueLabel={getWagePolicy(constitution).shortLabel}
+          options={WAGE_POLICY_OPTIONS}
+          selectedKey={getWagePolicy(constitution).key}
           info={POLICY_INFO.minimumWage}
           disabled={controlsDisabled}
-          onChange={minimumWage => changeValue({ minimumWage })}
+          onChange={option =>
+            changeValue({
+              wagePolicy: option.key,
+              minimumWage: option.minimumWage
+            })
+          }
         />
       </div>
 

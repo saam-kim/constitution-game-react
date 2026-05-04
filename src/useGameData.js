@@ -20,6 +20,30 @@ export const SESSION_PHASES = [
 
 export const INPUT_OPEN_PHASES = ["constitution", "revision"];
 
+export const TAX_POLICY_OPTIONS = [
+  {
+    key: "low",
+    label: "낮은 세금형",
+    shortLabel: "낮은 세금",
+    taxRate: 18,
+    description: "개인과 기업이 번 돈을 더 많이 가져가게 해 경제 활동의 자유를 넓힙니다."
+  },
+  {
+    key: "shared",
+    label: "공동 부담형",
+    shortLabel: "공동 부담",
+    taxRate: 35,
+    description: "모두가 감당 가능한 수준으로 넓게 부담해 안정적인 공공 재원을 만듭니다."
+  },
+  {
+    key: "ability",
+    label: "능력 부담형",
+    shortLabel: "능력 부담",
+    taxRate: 55,
+    description: "소득이 높은 사람이 더 큰 책임을 져 불평등 완화와 공동체 재원을 강화합니다."
+  }
+];
+
 export const BUDGET_DIRECTION_OPTIONS = [
   {
     key: "growth",
@@ -44,6 +68,41 @@ export const BUDGET_DIRECTION_OPTIONS = [
   }
 ];
 
+export const WAGE_POLICY_OPTIONS = [
+  {
+    key: "market",
+    label: "시장 자율형",
+    shortLabel: "시장 자율",
+    minimumWage: 9000,
+    description: "임금을 시장과 고용 상황에 더 맡겨 일자리 기회를 우선 고려합니다."
+  },
+  {
+    key: "gradual",
+    label: "점진 인상형",
+    shortLabel: "점진 인상",
+    minimumWage: 11000,
+    description: "노동자 보호와 사업자 부담을 함께 보며 최저임금을 천천히 올립니다."
+  },
+  {
+    key: "living",
+    label: "생활 보장형",
+    shortLabel: "생활 보장",
+    minimumWage: 13500,
+    description: "일하는 사람이 기본 생활을 할 수 있도록 최저임금을 높게 보장합니다."
+  }
+];
+
+export const getTaxPolicy = constitution => {
+  const key = constitution?.taxPolicy;
+  const matched = TAX_POLICY_OPTIONS.find(option => option.key === key);
+  if (matched) return matched;
+
+  const taxRate = Number(constitution?.taxRate ?? 35);
+  if (taxRate <= 22) return TAX_POLICY_OPTIONS[0];
+  if (taxRate >= 50) return TAX_POLICY_OPTIONS[2];
+  return TAX_POLICY_OPTIONS[1];
+};
+
 export const getBudgetDirection = constitution => {
   const key = constitution?.budgetDirection;
   const matched = BUDGET_DIRECTION_OPTIONS.find(option => option.key === key);
@@ -55,10 +114,23 @@ export const getBudgetDirection = constitution => {
   return BUDGET_DIRECTION_OPTIONS[2];
 };
 
+export const getWagePolicy = constitution => {
+  const key = constitution?.wagePolicy;
+  const matched = WAGE_POLICY_OPTIONS.find(option => option.key === key);
+  if (matched) return matched;
+
+  const minimumWage = Number(constitution?.minimumWage ?? 11000);
+  if (minimumWage <= 9500) return WAGE_POLICY_OPTIONS[0];
+  if (minimumWage >= 13000) return WAGE_POLICY_OPTIONS[2];
+  return WAGE_POLICY_OPTIONS[1];
+};
+
 const DEFAULT_CONSTITUTION = {
+  taxPolicy: "shared",
   taxRate: 35,
   budgetDirection: "opportunity",
   welfareBudget: 28,
+  wagePolicy: "gradual",
   minimumWage: 11000
 };
 
@@ -150,10 +222,12 @@ const stddev = values => {
 };
 
 const buildEventCards = ({ constitution, survivalIndex, assetGrowth, socialIntegration }) => {
-  const taxRate = Number(constitution.taxRate);
+  const taxPolicy = getTaxPolicy(constitution);
+  const taxRate = Number(taxPolicy.taxRate);
   const budgetDirection = getBudgetDirection(constitution);
   const welfareBudget = Number(budgetDirection.welfareBudget);
-  const minimumWage = Number(constitution.minimumWage);
+  const wagePolicy = getWagePolicy(constitution);
+  const minimumWage = Number(wagePolicy.minimumWage);
   const cards = [];
 
   if (budgetDirection.key === "growth") {
@@ -385,10 +459,12 @@ export const pickSocialClass = () => {
 };
 
 export const calculateResult = (constitution, assignedClassKey) => {
-  const taxRate = Number(constitution.taxRate);
+  const taxPolicy = getTaxPolicy(constitution);
+  const taxRate = Number(taxPolicy.taxRate);
   const budgetDirection = getBudgetDirection(constitution);
   const welfareBudget = Number(budgetDirection.welfareBudget);
-  const minimumWage = Number(constitution.minimumWage);
+  const wagePolicy = getWagePolicy(constitution);
+  const minimumWage = Number(wagePolicy.minimumWage);
   const directionEffects = {
     growth: {
       survivalBonus: -2,
@@ -758,10 +834,12 @@ export function useGameData(pin, groupId = null) {
     if (!pin || !groupId || group?.isSubmitted || !inputOpen) return;
 
     const nextConstitution = {
-      taxRate: clamp(Number(constitution.taxRate), 0, 70),
+      taxPolicy: getTaxPolicy(constitution).key,
+      taxRate: getTaxPolicy(constitution).taxRate,
       budgetDirection: getBudgetDirection(constitution).key,
       welfareBudget: getBudgetDirection(constitution).welfareBudget,
-      minimumWage: clamp(Number(constitution.minimumWage), 8000, 15000)
+      wagePolicy: getWagePolicy(constitution).key,
+      minimumWage: getWagePolicy(constitution).minimumWage
     };
 
     if (!database) {
@@ -800,10 +878,12 @@ export function useGameData(pin, groupId = null) {
     if (!pin || !groupId || !inputOpen) return false;
 
     const nextConstitution = {
-      taxRate: clamp(Number(constitution.taxRate), 0, 70),
+      taxPolicy: getTaxPolicy(constitution).key,
+      taxRate: getTaxPolicy(constitution).taxRate,
       budgetDirection: getBudgetDirection(constitution).key,
       welfareBudget: getBudgetDirection(constitution).welfareBudget,
-      minimumWage: clamp(Number(constitution.minimumWage), 8000, 15000)
+      wagePolicy: getWagePolicy(constitution).key,
+      minimumWage: getWagePolicy(constitution).minimumWage
     };
 
     if (!database) {

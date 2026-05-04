@@ -14,7 +14,9 @@ import {
 } from "recharts";
 import {
   SESSION_PHASES,
+  getTaxPolicy,
   getBudgetDirection,
+  getWagePolicy,
   useGameData
 } from "./useGameData";
 import { getAppPath, getAppUrl } from "./routes";
@@ -57,15 +59,17 @@ const getHomeUrl = () => getAppUrl();
 const getQrUrl = value =>
   `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(value)}`;
 
+const formatTaxPolicy = constitution => getTaxPolicy(constitution).label;
+
 const formatBudgetDirection = constitution =>
   getBudgetDirection(constitution).label;
 
+const formatWagePolicy = constitution => getWagePolicy(constitution).label;
+
 const formatPolicySummary = constitution =>
-  `세율 ${constitution?.taxRate ?? "-"}% · 예산 방향 ${formatBudgetDirection(
+  `세금 ${formatTaxPolicy(constitution)} · 예산 방향 ${formatBudgetDirection(
     constitution
-  )} · 최저임금 ${
-    constitution?.minimumWage?.toLocaleString("ko-KR") ?? "-"
-  }원`;
+  )} · 최저임금 ${formatWagePolicy(constitution)}`;
 
 const downloadCsv = ({ pin, groups }) => {
   const headers = [
@@ -74,9 +78,9 @@ const downloadCsv = ({ pin, groups }) => {
     "접속",
     "제출",
     "제출 시각",
-    "최고 소득세율",
+    "세금 정책 방향",
     "국가 예산 방향",
-    "최저임금",
+    "최저임금 방향",
     "미래의 나",
     "생존 지수",
     "자산 성장률",
@@ -91,9 +95,9 @@ const downloadCsv = ({ pin, groups }) => {
     group.connected ? "접속" : "미접속",
     group.isSubmitted ? "제출 완료" : "작성 중",
     formatDateTime(group.submittedAt),
-    group.constitution?.taxRate,
+    formatTaxPolicy(group.constitution),
     formatBudgetDirection(group.constitution),
-    group.constitution?.minimumWage,
+    formatWagePolicy(group.constitution),
     group.assignedClass?.label,
     group.result?.survivalIndex,
     group.result?.assetGrowth,
@@ -125,12 +129,12 @@ const downloadDetailedCsv = ({ pin, groups }) => {
     "접속 상태",
     "제출 상태",
     "제출 시각",
-    "1차 최고 소득세율",
+    "1차 세금 정책 방향",
     "1차 국가 예산 방향",
-    "1차 최저 임금",
-    "최종 최고 소득세율",
+    "1차 최저임금 방향",
+    "최종 세금 정책 방향",
     "최종 국가 예산 방향",
-    "최종 최저 임금",
+    "최종 최저임금 방향",
     "미래 위치",
     "생존 지수",
     "자산 성장률",
@@ -153,12 +157,12 @@ const downloadDetailedCsv = ({ pin, groups }) => {
       group.connected ? "접속" : "미접속",
       group.isSubmitted ? "제출 완료" : "작성 중",
       formatDateTime(group.submittedAt),
-      firstConstitution.taxRate,
+      firstRound ? formatTaxPolicy(firstConstitution) : "",
       firstRound ? formatBudgetDirection(firstConstitution) : "",
-      firstConstitution.minimumWage,
-      group.constitution?.taxRate,
+      firstRound ? formatWagePolicy(firstConstitution) : "",
+      formatTaxPolicy(group.constitution),
       formatBudgetDirection(group.constitution),
-      group.constitution?.minimumWage,
+      formatWagePolicy(group.constitution),
       group.assignedClass?.label,
       group.result?.survivalIndex,
       group.result?.assetGrowth,
@@ -540,9 +544,9 @@ function ComparisonTable({ groups, selectedGroupId, onSelect }) {
             <tr>
               <th className="px-3 py-3">모둠</th>
               <th className="px-3 py-3">상태</th>
-              <th className="px-3 py-3 text-right">세율</th>
+              <th className="px-3 py-3">세금 방향</th>
               <th className="px-3 py-3">예산 방향</th>
-              <th className="px-3 py-3 text-right">최저임금</th>
+              <th className="px-3 py-3">최저임금 방향</th>
               <th className="px-3 py-3 text-right">1차 결과</th>
               <th className="px-3 py-3">미래의 나</th>
               <th className="px-3 py-3 text-right">생존</th>
@@ -566,14 +570,14 @@ function ComparisonTable({ groups, selectedGroupId, onSelect }) {
                   <td>
                     {group.isSubmitted ? "제출 완료" : group.connected ? "작성 중" : "미접속"}
                   </td>
-                  <td className="text-right">
-                    {group.constitution?.taxRate ?? "-"}%
+                  <td>
+                    {group.constitution ? formatTaxPolicy(group.constitution) : "-"}
                   </td>
                   <td>
                     {group.constitution ? formatBudgetDirection(group.constitution) : "-"}
                   </td>
-                  <td className="text-right">
-                    {group.constitution?.minimumWage?.toLocaleString("ko-KR") ?? "-"}원
+                  <td>
+                    {group.constitution ? formatWagePolicy(group.constitution) : "-"}
                   </td>
                   <td className="text-right">{firstResult ?? "-"}</td>
                   <td>{group.assignedClass?.label ?? "-"}</td>
@@ -632,28 +636,34 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
 
   const chartData = selectedGroup?.constitution
     ? [
-        { name: "세율", value: selectedGroup.constitution.taxRate },
+        {
+          name: getTaxPolicy(selectedGroup.constitution).shortLabel,
+          value: getTaxPolicy(selectedGroup.constitution).taxRate
+        },
         {
           name: getBudgetDirection(selectedGroup.constitution).shortLabel,
           value: getBudgetDirection(selectedGroup.constitution).welfareBudget
         },
         {
-          name: "최저임금",
-          value: Math.round(selectedGroup.constitution.minimumWage / 1000)
+          name: getWagePolicy(selectedGroup.constitution).shortLabel,
+          value: Math.round(getWagePolicy(selectedGroup.constitution).minimumWage / 1000)
         }
       ]
     : [];
 
   const pieData = selectedGroup?.constitution
     ? [
-        { name: "최고 소득세율", value: selectedGroup.constitution.taxRate },
+        {
+          name: formatTaxPolicy(selectedGroup.constitution),
+          value: getTaxPolicy(selectedGroup.constitution).taxRate
+        },
         {
           name: formatBudgetDirection(selectedGroup.constitution),
           value: getBudgetDirection(selectedGroup.constitution).welfareBudget
         },
         {
-          name: "임금 지표",
-          value: Math.round(selectedGroup.constitution.minimumWage / 300)
+          name: formatWagePolicy(selectedGroup.constitution),
+          value: Math.round(getWagePolicy(selectedGroup.constitution).minimumWage / 300)
         }
       ]
     : [];
