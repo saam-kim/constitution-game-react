@@ -20,9 +20,45 @@ export const SESSION_PHASES = [
 
 export const INPUT_OPEN_PHASES = ["constitution", "revision"];
 
+export const BUDGET_DIRECTION_OPTIONS = [
+  {
+    key: "growth",
+    label: "성장 우선형",
+    shortLabel: "성장",
+    welfareBudget: 12,
+    description: "세금과 복지 지출을 낮추고 기업 활동, 투자, 일자리 확대를 우선합니다."
+  },
+  {
+    key: "basic",
+    label: "기본 보장형",
+    shortLabel: "기본 보장",
+    welfareBudget: 42,
+    description: "생계, 의료, 주거처럼 모든 시민의 최소 생활을 두텁게 보장합니다."
+  },
+  {
+    key: "opportunity",
+    label: "기회 투자형",
+    shortLabel: "기회 투자",
+    welfareBudget: 28,
+    description: "현금 지원보다 교육, 직업훈련, 돌봄처럼 다시 올라설 기회에 투자합니다."
+  }
+];
+
+export const getBudgetDirection = constitution => {
+  const key = constitution?.budgetDirection;
+  const matched = BUDGET_DIRECTION_OPTIONS.find(option => option.key === key);
+  if (matched) return matched;
+
+  const welfareBudget = Number(constitution?.welfareBudget ?? 25);
+  if (welfareBudget < 18) return BUDGET_DIRECTION_OPTIONS[0];
+  if (welfareBudget >= 35) return BUDGET_DIRECTION_OPTIONS[1];
+  return BUDGET_DIRECTION_OPTIONS[2];
+};
+
 const DEFAULT_CONSTITUTION = {
   taxRate: 35,
-  welfareBudget: 25,
+  budgetDirection: "opportunity",
+  welfareBudget: 28,
   minimumWage: 11000
 };
 
@@ -115,27 +151,38 @@ const stddev = values => {
 
 const buildEventCards = ({ constitution, survivalIndex, assetGrowth, socialIntegration }) => {
   const taxRate = Number(constitution.taxRate);
-  const welfareBudget = Number(constitution.welfareBudget);
+  const budgetDirection = getBudgetDirection(constitution);
+  const welfareBudget = Number(budgetDirection.welfareBudget);
   const minimumWage = Number(constitution.minimumWage);
   const cards = [];
 
-  if (welfareBudget < 18) {
+  if (budgetDirection.key === "growth") {
     cards.push({
       type: "warning",
-      title: "공공병원 대기 시간이 늘었습니다",
+      title: "일자리는 늘었지만 안전망 논쟁이 커졌습니다",
       body:
-        "복지 예산이 낮아 의료와 생계 지원이 충분히 작동하지 못했습니다. 가장 취약한 시민들이 먼저 불안을 느끼고 있습니다.",
-      question: "복지 예산을 어디까지 보장해야 가장 불리한 시민도 받아들일 수 있을까요?"
+        "투자와 고용은 활발해졌지만, 생계와 의료 지원이 부족하다는 시민들의 불안도 함께 커졌습니다.",
+      question: "성장의 자유를 지키면서 가장 불리한 시민의 최소 안전은 어디까지 보장해야 할까요?"
     });
   }
 
-  if (welfareBudget >= 35) {
+  if (budgetDirection.key === "basic") {
     cards.push({
       type: "good",
-      title: "사회 안전망이 두꺼워졌습니다",
+      title: "최소 생활 보장이 두꺼워졌습니다",
       body:
-        "생계, 의료, 주거 지원이 확대되어 위기에 놓인 시민들이 다시 일어설 여지가 커졌습니다.",
-      question: "이 복지 수준을 유지하기 위한 세금 부담은 정당하게 나누어지고 있나요?"
+        "생계, 의료, 주거 지원이 확대되어 위기에 놓인 시민들이 무너질 가능성이 줄었습니다.",
+      question: "기본 보장을 유지하기 위한 세금 부담은 정당하게 나누어지고 있나요?"
+    });
+  }
+
+  if (budgetDirection.key === "opportunity") {
+    cards.push({
+      type: "mixed",
+      title: "교육과 직업훈련 예산이 늘었습니다",
+      body:
+        "당장의 현금 지원은 제한적이지만, 청년과 저소득층이 다시 올라설 수 있는 기회 투자가 확대되었습니다.",
+      question: "기회 투자는 지금 가장 어려운 시민에게도 충분히 빠른 도움이 될까요?"
     });
   }
 
@@ -339,15 +386,39 @@ export const pickSocialClass = () => {
 
 export const calculateResult = (constitution, assignedClassKey) => {
   const taxRate = Number(constitution.taxRate);
-  const welfareBudget = Number(constitution.welfareBudget);
+  const budgetDirection = getBudgetDirection(constitution);
+  const welfareBudget = Number(budgetDirection.welfareBudget);
   const minimumWage = Number(constitution.minimumWage);
+  const directionEffects = {
+    growth: {
+      survivalBonus: -2,
+      assetBonus: 5,
+      middleBonus: 0,
+      lowerBonus: -2,
+      integrationBonus: -4
+    },
+    basic: {
+      survivalBonus: 10,
+      assetBonus: -3,
+      middleBonus: 3,
+      lowerBonus: 8,
+      integrationBonus: 6
+    },
+    opportunity: {
+      survivalBonus: 4,
+      assetBonus: 2,
+      middleBonus: 7,
+      lowerBonus: 6,
+      integrationBonus: 8
+    }
+  }[budgetDirection.key];
 
   const baseSurvival =
     welfareBudget * 1.5 + minimumWage / 500 - taxRate * 0.2;
   const stabilityBonus =
     welfareBudget >= 25 && minimumWage >= 11000 ? 25 : 0;
   const survivalIndex = clamp(
-    Math.round(baseSurvival + stabilityBonus),
+    Math.round(baseSurvival + stabilityBonus + directionEffects.survivalBonus),
     0,
     100
   );
@@ -356,16 +427,30 @@ export const calculateResult = (constitution, assignedClassKey) => {
     taxRate <= 50
       ? 5.0 - taxRate * 0.5
       : 5.0 - 50 * 0.5 - (taxRate - 50) * 0.8;
+  const adjustedAssetGrowth = assetGrowth + directionEffects.assetBonus;
 
-  const upperAsset = 100 + assetGrowth * 2;
+  const upperAsset = 100 + adjustedAssetGrowth * 2;
   const middleAsset =
-    70 + (minimumWage - 8000) / 400 - taxRate * 0.08 + welfareBudget * 0.25;
+    70 +
+    (minimumWage - 8000) / 400 -
+    taxRate * 0.08 +
+    welfareBudget * 0.25 +
+    directionEffects.middleBonus;
   const lowerAsset =
-    35 + survivalIndex * 0.7 + welfareBudget * 0.4 + minimumWage / 1500;
+    35 +
+    survivalIndex * 0.7 +
+    welfareBudget * 0.4 +
+    minimumWage / 1500 +
+    directionEffects.lowerBonus;
 
   const gapStddev = stddev([upperAsset, middleAsset, lowerAsset]);
   const socialIntegration = clamp(
-    Math.round(100 - gapStddev + Math.min(welfareBudget, 35) * 0.3),
+    Math.round(
+      100 -
+        gapStddev +
+        Math.min(welfareBudget, 35) * 0.3 +
+        directionEffects.integrationBonus
+    ),
     0,
     100
   );
@@ -374,19 +459,19 @@ export const calculateResult = (constitution, assignedClassKey) => {
     upper: {
       label: "상류층",
       score: clamp(
-        Math.round(55 + assetGrowth + socialIntegration * 0.25),
+        Math.round(55 + adjustedAssetGrowth + socialIntegration * 0.25),
         0,
         100
       ),
       message:
-        assetGrowth >= -10
+        adjustedAssetGrowth >= -10
           ? "자산을 지키는 데는 성공했지만, 이 규칙이 다른 위치에서도 공정한지 토론해 볼 필요가 있습니다."
           : "높은 조세 부담으로 자산 성장 압력이 커졌습니다. 공동체의 안정과 개인의 동기를 함께 따져 보세요."
     },
     middle: {
       label: "중산층",
       score: clamp(
-        Math.round(50 + socialIntegration * 0.35 + assetGrowth * 0.2),
+        Math.round(50 + socialIntegration * 0.35 + adjustedAssetGrowth * 0.2),
         0,
         100
       ),
@@ -407,7 +492,7 @@ export const calculateResult = (constitution, assignedClassKey) => {
 
   return {
     survivalIndex,
-    assetGrowth: Number(assetGrowth.toFixed(1)),
+    assetGrowth: Number(adjustedAssetGrowth.toFixed(1)),
     socialIntegration,
     assets: {
       upper: Math.round(upperAsset),
@@ -419,7 +504,7 @@ export const calculateResult = (constitution, assignedClassKey) => {
     eventCards: buildEventCards({
       constitution,
       survivalIndex,
-      assetGrowth: Number(assetGrowth.toFixed(1)),
+      assetGrowth: Number(adjustedAssetGrowth.toFixed(1)),
       socialIntegration
     })
   };
@@ -674,7 +759,8 @@ export function useGameData(pin, groupId = null) {
 
     const nextConstitution = {
       taxRate: clamp(Number(constitution.taxRate), 0, 70),
-      welfareBudget: clamp(Number(constitution.welfareBudget), 0, 50),
+      budgetDirection: getBudgetDirection(constitution).key,
+      welfareBudget: getBudgetDirection(constitution).welfareBudget,
       minimumWage: clamp(Number(constitution.minimumWage), 8000, 15000)
     };
 
@@ -715,7 +801,8 @@ export function useGameData(pin, groupId = null) {
 
     const nextConstitution = {
       taxRate: clamp(Number(constitution.taxRate), 0, 70),
-      welfareBudget: clamp(Number(constitution.welfareBudget), 0, 50),
+      budgetDirection: getBudgetDirection(constitution).key,
+      welfareBudget: getBudgetDirection(constitution).welfareBudget,
       minimumWage: clamp(Number(constitution.minimumWage), 8000, 15000)
     };
 

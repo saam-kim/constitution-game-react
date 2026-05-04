@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { SESSION_PHASES, useGameData } from "./useGameData";
+import {
+  BUDGET_DIRECTION_OPTIONS,
+  SESSION_PHASES,
+  getBudgetDirection,
+  useGameData
+} from "./useGameData";
 
 const formatTime = seconds => {
   const m = String(Math.floor(seconds / 60)).padStart(2, "0");
@@ -17,9 +22,9 @@ const POLICY_INFO = {
       "소득이 높은 사람에게 적용되는 가장 높은 세율입니다. 세율이 높으면 복지 재원이 늘 수 있지만, 고소득층의 자산 증가에는 부담이 될 수 있습니다."
   },
   welfareBudget: {
-    title: "복지 예산 비중",
+    title: "국가 예산 방향",
     body:
-      "전체 예산 중 생계, 의료, 주거, 교육 같은 사회 안전망에 쓰는 비율입니다. 비중이 높을수록 취약한 사람을 보호하기 쉽지만 다른 분야 예산은 줄어듭니다."
+      "국가 예산을 성장, 기본 생활 보장, 기회 투자 중 어디에 우선 둘지 정합니다. 자유로운 경제 활동과 평등한 출발 조건을 함께 따져 보세요."
   },
   minimumWage: {
     title: "최저임금",
@@ -30,9 +35,19 @@ const POLICY_INFO = {
 
 const SUBMIT_CHECKS = [
   "가장 불리한 위치에 태어나도 받아들일 수 있는 규칙인가요?",
-  "세금 부담과 복지 혜택을 납득할 수 있게 나누었나요?",
+  "세금 부담과 예산 방향을 납득할 수 있게 정했나요?",
   "최저임금이 노동자와 고용자 모두에게 감당 가능한가요?"
 ];
+
+const formatBudgetDirection = constitution =>
+  getBudgetDirection(constitution).label;
+
+const formatPolicySummary = constitution =>
+  `세율 ${constitution?.taxRate ?? "-"}% · 예산 방향 ${formatBudgetDirection(
+    constitution
+  )} · 최저임금 ${
+    constitution?.minimumWage?.toLocaleString("ko-KR") ?? "-"
+  }원`;
 
 function PolicyInfo({ item }) {
   return (
@@ -162,7 +177,7 @@ function PresentationCard({ group }) {
       <div className="presentation-grid mt-5">
         <div>
           <p className="panel-label">1차 헌법</p>
-          <p>세율 {firstRound?.constitution?.taxRate ?? group.constitution?.taxRate}% · 복지 {firstRound?.constitution?.welfareBudget ?? group.constitution?.welfareBudget}% · 최저임금 {(firstRound?.constitution?.minimumWage ?? group.constitution?.minimumWage)?.toLocaleString("ko-KR")}원</p>
+          <p>{formatPolicySummary(firstRound?.constitution ?? group.constitution)}</p>
         </div>
         <div>
           <p className="panel-label">미래의 나</p>
@@ -170,7 +185,7 @@ function PresentationCard({ group }) {
         </div>
         <div>
           <p className="panel-label">최종 헌법</p>
-          <p>세율 {group.constitution?.taxRate}% · 복지 {group.constitution?.welfareBudget}% · 최저임금 {group.constitution?.minimumWage?.toLocaleString("ko-KR")}원</p>
+          <p>{formatPolicySummary(group.constitution)}</p>
         </div>
         <div>
           <p className="panel-label">발표 질문</p>
@@ -248,6 +263,47 @@ function NumberControl({
   );
 }
 
+function BudgetDirectionControl({ value, disabled, onChange }) {
+  const selected = getBudgetDirection(value);
+
+  return (
+    <section className="control-card">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h2 className="panel-heading">국가 예산 방향</h2>
+        <div className="value-pill value-pill-text">
+          {selected.shortLabel}
+        </div>
+      </div>
+
+      <div className="choice-grid">
+        {BUDGET_DIRECTION_OPTIONS.map(option => {
+          const active = option.key === selected.key;
+
+          return (
+            <button
+              key={option.key}
+              type="button"
+              disabled={disabled}
+              onClick={() =>
+                onChange({
+                  budgetDirection: option.key,
+                  welfareBudget: option.welfareBudget
+                })
+              }
+              className={`choice-card ${active ? "active" : ""}`}
+            >
+              <span>{option.label}</span>
+              <small>{option.description}</small>
+            </button>
+          );
+        })}
+      </div>
+
+      <PolicyInfo item={POLICY_INFO.welfareBudget} />
+    </section>
+  );
+}
+
 export default function StudentApp({ pin, groupId }) {
   const {
     group,
@@ -262,7 +318,8 @@ export default function StudentApp({ pin, groupId }) {
 
   const [constitution, setConstitution] = useState({
     taxRate: 35,
-    welfareBudget: 25,
+    budgetDirection: "opportunity",
+    welfareBudget: 28,
     minimumWage: 11000
   });
   const [checkedItems, setCheckedItems] = useState([]);
@@ -273,7 +330,12 @@ export default function StudentApp({ pin, groupId }) {
 
   useEffect(() => {
     if (group?.constitution) {
-      setConstitution(group.constitution);
+      const budgetDirection = getBudgetDirection(group.constitution);
+      setConstitution({
+        ...group.constitution,
+        budgetDirection: budgetDirection.key,
+        welfareBudget: budgetDirection.welfareBudget
+      });
     }
   }, [group?.constitution]);
 
@@ -292,8 +354,9 @@ export default function StudentApp({ pin, groupId }) {
       inputOpen &&
       constitution.taxRate >= 0 &&
       constitution.taxRate <= 70 &&
-      constitution.welfareBudget >= 0 &&
-      constitution.welfareBudget <= 50 &&
+      BUDGET_DIRECTION_OPTIONS.some(
+        option => option.key === getBudgetDirection(constitution).key
+      ) &&
       constitution.minimumWage >= 8000 &&
       constitution.minimumWage <= 15000 &&
       allChecked
@@ -377,16 +440,10 @@ export default function StudentApp({ pin, groupId }) {
           onChange={taxRate => changeValue({ taxRate })}
         />
 
-        <NumberControl
-          label="복지 예산 비중"
-          value={constitution.welfareBudget}
-          min={0}
-          max={50}
-          step={1}
-          suffix="%"
-          info={POLICY_INFO.welfareBudget}
+        <BudgetDirectionControl
+          value={constitution}
           disabled={controlsDisabled}
-          onChange={welfareBudget => changeValue({ welfareBudget })}
+          onChange={changeValue}
         />
 
         <NumberControl

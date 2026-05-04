@@ -12,7 +12,11 @@ import {
   RadialBarChart,
   RadialBar
 } from "recharts";
-import { SESSION_PHASES, useGameData } from "./useGameData";
+import {
+  SESSION_PHASES,
+  getBudgetDirection,
+  useGameData
+} from "./useGameData";
 import { getAppPath, getAppUrl } from "./routes";
 
 const COLORS = ["#1B6BFF", "#2E7D4F", "#0A2E7A"];
@@ -53,6 +57,16 @@ const getHomeUrl = () => getAppUrl();
 const getQrUrl = value =>
   `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(value)}`;
 
+const formatBudgetDirection = constitution =>
+  getBudgetDirection(constitution).label;
+
+const formatPolicySummary = constitution =>
+  `세율 ${constitution?.taxRate ?? "-"}% · 예산 방향 ${formatBudgetDirection(
+    constitution
+  )} · 최저임금 ${
+    constitution?.minimumWage?.toLocaleString("ko-KR") ?? "-"
+  }원`;
+
 const downloadCsv = ({ pin, groups }) => {
   const headers = [
     "PIN",
@@ -61,7 +75,7 @@ const downloadCsv = ({ pin, groups }) => {
     "제출",
     "제출 시각",
     "최고 소득세율",
-    "복지 예산 비중",
+    "국가 예산 방향",
     "최저임금",
     "미래의 나",
     "생존 지수",
@@ -78,7 +92,7 @@ const downloadCsv = ({ pin, groups }) => {
     group.isSubmitted ? "제출 완료" : "작성 중",
     formatDateTime(group.submittedAt),
     group.constitution?.taxRate,
-    group.constitution?.welfareBudget,
+    formatBudgetDirection(group.constitution),
     group.constitution?.minimumWage,
     group.assignedClass?.label,
     group.result?.survivalIndex,
@@ -112,10 +126,10 @@ const downloadDetailedCsv = ({ pin, groups }) => {
     "제출 상태",
     "제출 시각",
     "1차 최고 소득세율",
-    "1차 복지 예산 비중",
+    "1차 국가 예산 방향",
     "1차 최저 임금",
     "최종 최고 소득세율",
-    "최종 복지 예산 비중",
+    "최종 국가 예산 방향",
     "최종 최저 임금",
     "미래 위치",
     "생존 지수",
@@ -140,10 +154,10 @@ const downloadDetailedCsv = ({ pin, groups }) => {
       group.isSubmitted ? "제출 완료" : "작성 중",
       formatDateTime(group.submittedAt),
       firstConstitution.taxRate,
-      firstConstitution.welfareBudget,
+      firstRound ? formatBudgetDirection(firstConstitution) : "",
       firstConstitution.minimumWage,
       group.constitution?.taxRate,
-      group.constitution?.welfareBudget,
+      formatBudgetDirection(group.constitution),
       group.constitution?.minimumWage,
       group.assignedClass?.label,
       group.result?.survivalIndex,
@@ -441,9 +455,7 @@ function TeacherPresentationCard({ group }) {
         <div>
           <p className="panel-label">처음 선택</p>
           <p>
-            세율 {firstRound?.constitution?.taxRate ?? group.constitution?.taxRate}% · 복지{" "}
-            {firstRound?.constitution?.welfareBudget ?? group.constitution?.welfareBudget}% · 최저임금{" "}
-            {(firstRound?.constitution?.minimumWage ?? group.constitution?.minimumWage)?.toLocaleString("ko-KR")}원
+            {formatPolicySummary(firstRound?.constitution ?? group.constitution)}
           </p>
         </div>
         <div>
@@ -453,8 +465,7 @@ function TeacherPresentationCard({ group }) {
         <div>
           <p className="panel-label">최종 선택</p>
           <p>
-            세율 {group.constitution?.taxRate}% · 복지 {group.constitution?.welfareBudget}% · 최저임금{" "}
-            {group.constitution?.minimumWage?.toLocaleString("ko-KR")}원
+            {formatPolicySummary(group.constitution)}
           </p>
         </div>
         <div>
@@ -530,7 +541,7 @@ function ComparisonTable({ groups, selectedGroupId, onSelect }) {
               <th className="px-3 py-3">모둠</th>
               <th className="px-3 py-3">상태</th>
               <th className="px-3 py-3 text-right">세율</th>
-              <th className="px-3 py-3 text-right">복지</th>
+              <th className="px-3 py-3">예산 방향</th>
               <th className="px-3 py-3 text-right">최저임금</th>
               <th className="px-3 py-3 text-right">1차 결과</th>
               <th className="px-3 py-3">미래의 나</th>
@@ -558,8 +569,8 @@ function ComparisonTable({ groups, selectedGroupId, onSelect }) {
                   <td className="text-right">
                     {group.constitution?.taxRate ?? "-"}%
                   </td>
-                  <td className="text-right">
-                    {group.constitution?.welfareBudget ?? "-"}%
+                  <td>
+                    {group.constitution ? formatBudgetDirection(group.constitution) : "-"}
                   </td>
                   <td className="text-right">
                     {group.constitution?.minimumWage?.toLocaleString("ko-KR") ?? "-"}원
@@ -622,7 +633,10 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
   const chartData = selectedGroup?.constitution
     ? [
         { name: "세율", value: selectedGroup.constitution.taxRate },
-        { name: "복지", value: selectedGroup.constitution.welfareBudget },
+        {
+          name: getBudgetDirection(selectedGroup.constitution).shortLabel,
+          value: getBudgetDirection(selectedGroup.constitution).welfareBudget
+        },
         {
           name: "최저임금",
           value: Math.round(selectedGroup.constitution.minimumWage / 1000)
@@ -633,7 +647,10 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
   const pieData = selectedGroup?.constitution
     ? [
         { name: "최고 소득세율", value: selectedGroup.constitution.taxRate },
-        { name: "복지 예산", value: selectedGroup.constitution.welfareBudget },
+        {
+          name: formatBudgetDirection(selectedGroup.constitution),
+          value: getBudgetDirection(selectedGroup.constitution).welfareBudget
+        },
         {
           name: "임금 지표",
           value: Math.round(selectedGroup.constitution.minimumWage / 300)

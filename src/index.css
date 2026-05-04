@@ -471,6 +471,11 @@ button:active:not(:disabled) {
   font-weight: 800;
 }
 
+.value-pill-text {
+  min-width: 132px;
+  font-size: 22px;
+}
+
 .info-callout {
   display: flex;
   gap: 14px;
@@ -736,6 +741,55 @@ button:active:not(:disabled) {
   margin-top: 24px;
 }
 
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.choice-card {
+  min-height: 176px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-soft);
+  padding: 20px;
+  text-align: left;
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.choice-card span {
+  display: block;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.choice-card small {
+  display: block;
+  margin-top: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
+.choice-card:hover:not(:disabled),
+.choice-card.active {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-ink);
+}
+
+.choice-card.active {
+  box-shadow: 0 0 0 2px var(--color-brand) inset;
+}
+
+.choice-card:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-faint);
+}
+
 .step-button {
   display: grid;
   height: 64px;
@@ -811,7 +865,8 @@ button:active:not(:disabled) {
   .result-score-layout,
   .chart-row,
   .entry-layout,
-  .event-grid {
+  .event-grid,
+  .choice-grid {
     grid-template-columns: 1fr;
   }
 
