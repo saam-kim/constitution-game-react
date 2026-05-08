@@ -12,10 +12,10 @@ import { database, isFirebaseConfigured } from "./firebase";
 
 export const SESSION_PHASES = [
   { key: "discussion", label: "토론", note: "모둠 입장과 쟁점 확인" },
-  { key: "constitution", label: "헌법 제정", note: "정책 선택과 제출" },
-  { key: "result", label: "결과 확인", note: "1차 룰렛과 결과 검토" },
-  { key: "revision", label: "새 헌법 토론", note: "결과를 바탕으로 재토론" },
-  { key: "final", label: "최종 결과 및 발표", note: "수정 헌법 비교와 발표" }
+  { key: "constitution", label: "1차 설계", note: "정책 선택과 제출" },
+  { key: "result", label: "역할 공개", note: "미래의 나와 생활 모습 확인" },
+  { key: "revision", label: "2차 설계", note: "결과를 바탕으로 재토론" },
+  { key: "final", label: "설계 과정 및 결과 발표", note: "수정한 사회 설계 비교와 발표" }
 ];
 
 export const INPUT_OPEN_PHASES = ["constitution", "revision"];
@@ -150,7 +150,7 @@ export const FUTURE_SELF_CARDS = [
     situation:
       "가족의 생활비가 빠듯해서 복지와 최저임금 변화가 일상에 바로 영향을 줍니다.",
     priority: "기본 생활 안정, 교육 기회, 의료비 부담 완화",
-    question: "이 헌법은 가장 불리한 위치의 학생도 존중하고 있나요?"
+    question: "이 사회 설계는 가장 불리한 위치의 학생도 존중하고 있나요?"
   },
   {
     key: "small_business_owner",
@@ -161,18 +161,18 @@ export const FUTURE_SELF_CARDS = [
     situation:
       "최저임금과 세금이 너무 빠르게 오르면 고용을 유지하기 어렵지만, 사회가 안정되면 손님도 늘어납니다.",
     priority: "고용 유지, 세금 부담 예측 가능성, 지역 경제 안정",
-    question: "이 헌법은 일하는 사람과 고용하는 사람의 부담을 함께 보나요?"
+    question: "이 사회 설계는 일하는 사람과 고용하는 사람의 부담을 함께 보나요?"
   },
   {
     key: "office_worker_parent",
     classKey: "middle",
     label: "아이를 키우는 중산층 직장인",
     weight: 22,
-    headline: "월급으로 생활하며 교육비와 주거비를 함께 감당합니다.",
+    headline: "매달 월급 안에서 주거비, 교육비, 생활비를 계획해 씁니다.",
     situation:
-      "복지가 늘면 돌봄 부담은 줄지만, 세금이 높아지면 매달 쓸 수 있는 돈이 줄어듭니다.",
+      "돌봄과 교육 지원은 가계 부담을 덜어 주지만, 세금이 늘면 당장 쓸 수 있는 생활비가 줄어듭니다.",
     priority: "생활 안정, 세금과 복지의 균형, 사회 갈등 완화",
-    question: "이 헌법은 부담과 혜택을 납득 가능한 방식으로 나누나요?"
+    question: "이 사회 설계는 부담과 혜택을 납득 가능한 방식으로 나누나요?"
   },
   {
     key: "high_income_professional",
@@ -183,7 +183,7 @@ export const FUTURE_SELF_CARDS = [
     situation:
       "높은 세금은 자산 증가를 늦출 수 있지만, 불평등이 줄고 사회가 안정되면 장기적으로 이익을 얻을 수 있습니다.",
     priority: "경제 활동의 자유, 공정한 조세, 사회 신뢰",
-    question: "이 헌법은 능력의 보상과 공동체 책임을 함께 설명하나요?"
+    question: "이 사회 설계는 능력의 보상과 공동체 책임을 함께 설명하나요?"
   },
   {
     key: "elderly_citizen",
@@ -194,7 +194,7 @@ export const FUTURE_SELF_CARDS = [
     situation:
       "복지 예산이 낮으면 생계와 의료 접근성이 흔들리지만, 지속 가능한 재원이 함께 필요합니다.",
     priority: "의료와 생계 보장, 세대 간 공정성, 복지 지속 가능성",
-    question: "이 헌법은 스스로를 지키기 어려운 시민을 보호하나요?"
+    question: "이 사회 설계는 스스로를 지키기 어려운 시민을 보호하나요?"
   },
   {
     key: "new_worker",
@@ -205,7 +205,7 @@ export const FUTURE_SELF_CARDS = [
     situation:
       "최저임금은 생활의 버팀목이지만, 고용이 줄어들면 첫 출발 자체가 어려워질 수 있습니다.",
     priority: "최저 생활 보장, 일자리 기회, 미래 이동 가능성",
-    question: "이 헌법은 지금의 약자를 보호하면서 미래 기회도 열어두나요?"
+    question: "이 사회 설계는 지금의 약자를 보호하면서 미래 기회도 열어두나요?"
   }
 ];
 
@@ -246,7 +246,7 @@ const buildEventCards = ({ constitution, survivalIndex, assetGrowth, socialInteg
       title: "최소 생활 보장이 두꺼워졌습니다",
       body:
         "생계, 의료, 주거 지원이 확대되어 위기에 놓인 시민들이 무너질 가능성이 줄었습니다.",
-      question: "기본 보장을 유지하기 위한 세금 부담은 정당하게 나누어지고 있나요?"
+      question: "누가 세금을 더 내고, 그 부담을 왜 받아들일 수 있나요?"
     });
   }
 
@@ -266,7 +266,7 @@ const buildEventCards = ({ constitution, survivalIndex, assetGrowth, socialInteg
       title: "고소득층의 조세 저항이 커졌습니다",
       body:
         "높은 세율로 공동체 재원은 늘었지만, 일부 시민은 경제 활동의 보상이 줄었다고 반발합니다.",
-      question: "공동체 책임과 개인의 성취 보상은 어디에서 균형을 이룰까요?"
+      question: "세금을 더 내는 시민에게 이 규칙을 어떻게 설명할 수 있나요?"
     });
   }
 
@@ -276,7 +276,7 @@ const buildEventCards = ({ constitution, survivalIndex, assetGrowth, socialInteg
       title: "공공 서비스 예산이 부족해졌습니다",
       body:
         "세금 부담은 낮아졌지만 교육, 의료, 안전망을 유지할 재원이 충분하지 않다는 지적이 나옵니다.",
-      question: "낮은 세금이 모두에게 공정한 결과를 만들고 있나요?"
+      question: "세금은 낮아졌지만, 누가 불편을 겪고 있나요?"
     });
   }
 
@@ -303,10 +303,10 @@ const buildEventCards = ({ constitution, survivalIndex, assetGrowth, socialInteg
   if (socialIntegration < 55) {
     cards.push({
       type: "warning",
-      title: "시민 갈등 지수가 높아졌습니다",
+      title: "시민 사이의 갈등이 커졌습니다",
       body:
         "계층 사이의 결과 차이가 커져 서로가 같은 규칙을 공정하다고 느끼지 못하고 있습니다.",
-      question: "규칙의 혜택과 부담을 다시 나누어야 할 부분은 어디인가요?"
+      question: "누구에게 혜택이 가고, 누구에게 부담이 커졌나요?"
     });
   }
 
@@ -316,7 +316,7 @@ const buildEventCards = ({ constitution, survivalIndex, assetGrowth, socialInteg
       title: "대체로 안정적인 사회 합의가 만들어졌습니다",
       body:
         "가장 불리한 시민의 생존 가능성을 지키면서도 사회 전체의 갈등이 크게 악화되지 않았습니다.",
-      question: "이 헌법을 무지의 베일 뒤에서도 선택할 수 있다고 말할 근거는 무엇인가요?"
+      question: "이 사회 설계를 무지의 베일 뒤에서도 선택할 수 있다고 말할 근거는 무엇인가요?"
     });
   }
 
@@ -326,7 +326,7 @@ const buildEventCards = ({ constitution, survivalIndex, assetGrowth, socialInteg
       title: "큰 위기는 없지만 설득력 있는 이유가 필요합니다",
       body:
         "정책 수치가 극단적이지 않아 사회는 급격히 흔들리지 않았습니다. 이제 왜 이 균형이 공정한지 설명해야 합니다.",
-      question: "우리 모둠의 헌법 원칙을 한 문장으로 말하면 무엇인가요?"
+      question: "우리 모둠의 사회 원칙을 한 문장으로 말하면 무엇인가요?"
     });
   }
 
@@ -541,8 +541,8 @@ export const calculateResult = (constitution, assignedClassKey) => {
       ),
       message:
         adjustedAssetGrowth >= -10
-          ? "자산을 지키는 데는 성공했지만, 이 규칙이 다른 위치에서도 공정한지 토론해 볼 필요가 있습니다."
-          : "높은 조세 부담으로 자산 성장 압력이 커졌습니다. 공동체의 안정과 개인의 동기를 함께 따져 보세요."
+          ? "내 역할에서는 자산과 경제활동 여지가 비교적 유지됩니다. 다만 이 규칙을 저소득층이나 노동자 역할에서도 받아들일 수 있을지 함께 따져보세요."
+          : "세금 부담이 커져 자산을 늘리기 어렵다고 느낄 수 있습니다. 그 부담이 더 안정적인 사회를 만드는 데 필요한지 근거를 찾아보세요."
     },
     middle: {
       label: "중산층",
@@ -553,16 +553,16 @@ export const calculateResult = (constitution, assignedClassKey) => {
       ),
       message:
         socialIntegration >= 70
-          ? "격차가 완화되어 중산층의 안정성이 높습니다. 이 안정이 지속 가능한지 근거를 찾아 보세요."
-          : "격차가 커지면 중산층의 불안정성이 증가합니다. 어떤 조항을 조정할지 논의해 보세요."
+          ? "내 역할에서는 비교적 안정적으로 살아갈 수 있는 조건이 보입니다. 다만 이 안정이 세금 부담, 복지 혜택, 일자리 조건 속에서도 계속 유지될 수 있는지 근거를 찾아보세요."
+          : "내 역할에서는 생활 불안이 커질 수 있습니다. 세금, 예산, 최저임금 중 무엇을 조정하면 안정이 나아질지 논의해 보세요."
     },
     lower: {
       label: "빈곤층",
       score: survivalIndex,
       message:
         survivalIndex >= 80
-          ? "기본 생활을 지킬 가능성이 높습니다. 이 헌법이 가장 불리한 위치를 충분히 고려했는지 평가해 보세요."
-          : "생존 지수가 낮아 생활 안정 장치가 부족합니다. 무지의 베일 뒤에서 이 규칙을 선택할 수 있을지 물어보세요."
+          ? "내 역할에서는 기본 생활을 지킬 가능성이 높습니다. 이 보호가 어떤 정책 선택 덕분인지 근거를 찾아보세요."
+          : "내 역할에서는 생계, 의료, 주거를 지키기 어려울 수 있습니다. 무지의 베일 뒤에서도 이 규칙을 선택할 수 있을지 다시 물어보세요."
     }
   };
 

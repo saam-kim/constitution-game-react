@@ -39,7 +39,7 @@ function StartScreen() {
           <div className="brand-logo">붕</div>
           <div>
             <p className="brand-kicker">BOOONG CLASSROOM</p>
-            <h1 className="brand-title">헌법 제정 게임</h1>
+            <h1 className="brand-title">Who am I : 정의로운 사회 만들기</h1>
           </div>
         </div>
 

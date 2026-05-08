@@ -50,10 +50,21 @@ const formatBudgetDirection = constitution =>
 
 const formatWagePolicy = constitution => getWagePolicy(constitution).label;
 
-const formatPolicySummary = constitution =>
-  `세금 ${formatTaxPolicy(constitution)} · 예산 방향 ${formatBudgetDirection(
-    constitution
-  )} · 최저임금 ${formatWagePolicy(constitution)}`;
+function PolicySummary({ constitution }) {
+  return (
+    <ul className="policy-summary-list">
+      <li>
+        <span>세금</span>: {formatTaxPolicy(constitution)}
+      </li>
+      <li>
+        <span>예산 방향</span>: {formatBudgetDirection(constitution)}
+      </li>
+      <li>
+        <span>최저임금</span>: {formatWagePolicy(constitution)}
+      </li>
+    </ul>
+  );
+}
 
 function PolicyInfo({ item }) {
   return (
@@ -69,6 +80,70 @@ function PolicyInfo({ item }) {
   );
 }
 
+function getStudentInsights(result) {
+  if (!result) return [];
+
+  const survivalStatus =
+    result.survivalIndex >= 80
+      ? "\uac00\uc7a5 \ubd88\ub9ac\ud55c \uc2dc\ubbfc\ub3c4 \uae30\ubcf8 \uc0dd\ud65c\uc744 \uc9c0\ud0ac \uac00\ub2a5\uc131\uc774 \ud07d\ub2c8\ub2e4."
+      : result.survivalIndex >= 60
+        ? "\uae30\ubcf8 \uc0dd\ud65c\uc740 \uac00\ub2a5\ud558\uc9c0\ub9cc \ubd88\uc548\uc815\ud55c \ubd80\ubd84\uc774 \ub0a8\uc544 \uc788\uc2b5\ub2c8\ub2e4."
+        : "\uac00\uc7a5 \ubd88\ub9ac\ud55c \uc704\uce58\uc5d0\uc11c\ub294 \uc0dd\ud65c \uc548\uc815\uc774 \ubd80\uc871\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.";
+
+  const freedomStatus =
+    result.assetGrowth >= 0
+      ? "\uacbd\uc81c \ud65c\ub3d9\uc758 \uc790\uc720\uac00 \ub110\ub110\ud788 \uc720\uc9c0\ub429\ub2c8\ub2e4."
+      : result.assetGrowth >= -15
+        ? "\uacf5\ub3d9\uccb4 \ubd80\ub2f4\uacfc \uacbd\uc81c \ud65c\ub3d9\uc758 \uc790\uc720\ub97c \ud568\uaed8 \ub530\uc838\ubcfc \ud544\uc694\uac00 \uc788\uc2b5\ub2c8\ub2e4."
+        : "\uc0ac\ud68c\uc801 \ubcf4\uc7a5\uc744 \uac15\ud654\ud55c \ub300\uc2e0 \uacbd\uc81c \ud65c\ub3d9\uc5d0 \ud070 \ubd80\ub2f4\uc774 \uc0dd\uae38 \uc218 \uc788\uc2b5\ub2c8\ub2e4.";
+
+  const integrationStatus =
+    result.socialIntegration >= 80
+      ? "\uc11c\ub85c \uac19\uc740 \uaddc\uce59\uc744 \ubc1b\uc544\ub4e4\uc77c \uac00\ub2a5\uc131\uc774 \ud07d\ub2c8\ub2e4."
+      : result.socialIntegration >= 60
+        ? "\ud568\uaed8 \uc0b4\uc544\uac08 \uc218 \uc788\uc9c0\ub9cc \uac08\ub4f1\uc744 \uc904\uc77c \ubcf4\uc644\uc774 \ud544\uc694\ud569\ub2c8\ub2e4."
+        : "\uc11c\ub85c\uac00 \uac19\uc740 \uaddc\uce59\uc744 \uacf5\uc815\ud558\ub2e4\uace0 \ubc1b\uc544\ub4e4\uc774\uae30 \uc5b4\ub824\uc6b8 \uc218 \uc788\uc2b5\ub2c8\ub2e4.";
+
+  return [
+    {
+      title: "가장 불리한 시민도 버틸 수 있는가?",
+      status: survivalStatus,
+      question: "누가 가장 보호받고, 누가 부담을 느낄까요?"
+    },
+    {
+      title: "경제 활동의 자유는 얼마나 남아 있는가?",
+      status: freedomStatus,
+      question: "누가 더 자유로워지고, 누가 더 부담을 지나요?"
+    },
+    {
+      title: "모두가 이 규칙을 받아들일 수 있는가?",
+      status: integrationStatus,
+      question: "다른 위치의 시민도 이 규칙을 납득할 수 있을까요?"
+    }
+  ];
+}
+
+function StudentInsightCards({ result }) {
+  const insights = getStudentInsights(result);
+  if (!insights.length) return null;
+
+  return (
+    <section className="panel mt-6">
+      <p className="panel-label">{"우리 선택이 만든 결과"}</p>
+      <h2 className="panel-heading mt-1">{"1차 설계 결과 살펴보기"}</h2>
+      <div className="student-insight-grid mt-5">
+        {insights.map(insight => (
+          <article key={insight.title} className="interpretation-card student-insight-card">
+            <p className="panel-label">{insight.title}</p>
+            <h3>{insight.status}</h3>
+            <strong>{insight.question}</strong>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function FutureSelfCard({ group, phase }) {
   const futureSelf = group?.assignedClass;
   const result = group?.result;
@@ -78,15 +153,14 @@ function FutureSelfCard({ group, phase }) {
     return (
       <section className="veil-card">
         <div>
-          <p className="panel-label">무지의 베일</p>
-          <h2 className="panel-heading mt-1">아직 우리는 누구인지 모릅니다</h2>
-          <p className="mt-3 font-serif text-lg leading-8 text-[var(--color-text)]">
-            어떤 가정, 어떤 직업, 어떤 소득에서 살아가게 될지 모르는 상태에서
-            모두가 받아들일 수 있는 헌법을 정해 보세요.
+          <p className="panel-label">{"\ubb34\uc9c0\uc758 \ubca0\uc77c"}</p>
+          <h2 className="panel-heading mt-1">{"\uc544\uc9c1 \uc6b0\ub9ac\ub294 \ub204\uad6c\uc778\uc9c0 \ubaa8\ub985\ub2c8\ub2e4"}</h2>
+          <p className="mt-3 text-lg leading-8 text-[var(--color-text)]">
+            {"\ub0b4\uac00 \uc5b4\ub5a4 \uc704\uce58\uc5d0\uc11c \uc0b4\uac8c \ub420\uc9c0 \ubaa8\ub974\ub294 \uc0c1\ud0dc\uc5d0\uc11c \ubaa8\ub450\uac00 \ubc1b\uc544\ub4e4\uc77c \uc218 \uc788\ub294 \uc0ac\ud68c \uc6d0\uce59\uc744 \uc815\ud574 \ubcf4\uc138\uc694."}
           </p>
         </div>
         <div className="veil-question">
-          내가 가장 불리한 위치에 태어나도 이 규칙을 받아들일 수 있을까?
+          {"\ub0b4\uac00 \uac00\uc7a5 \ubd88\ub9ac\ud55c \uc704\uce58\uc5d0 \ud0dc\uc5b4\ub098\ub3c4 \uc774 \uaddc\uce59\uc744 \ubc1b\uc544\ub4e4\uc77c \uc218 \uc788\uc744\uae4c?"}
         </div>
       </section>
     );
@@ -95,39 +169,30 @@ function FutureSelfCard({ group, phase }) {
   return (
     <section className="future-card">
       <div>
-        <p className="panel-label">베일이 걷혔습니다</p>
+        <p className="panel-label">{"\ubca0\uc77c\uc774 \uac77\ud614\uc2b5\ub2c8\ub2e4"}</p>
         <h2 className="panel-heading mt-1">{futureSelf.label}</h2>
         <p className="mt-3 text-lg font-bold text-[var(--color-text)]">
-          {futureSelf.headline ?? "공개된 위치에서 헌법의 영향을 다시 살펴보세요."}
+          {futureSelf.headline ?? "공개된 역할에서 사회 제도의 영향을 다시 살펴보세요."}
         </p>
-        <p className="mt-3 font-serif text-lg leading-8 text-[var(--color-text)]">
+        <p className="mt-3 text-lg leading-8 text-[var(--color-text)]">
           {futureSelf.situation ??
-            "이 위치의 시민에게 세금, 복지, 최저임금이 어떤 의미인지 토론해 보세요."}
+            "이 역할의 시민에게 세금, 예산, 최저임금 선택이 어떤 이익과 부담을 만드는지 토론해 보세요."}
         </p>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
+      <div className="mt-5">
         <div className="metric-card">
-          <p className="panel-label">중요한 기준</p>
+          <p className="panel-label">{"내가 특히 따져볼 기준"}</p>
           <p className="mt-2 font-bold">
-            {futureSelf.priority ?? "생활 안정, 기회, 공정한 부담"}
-          </p>
-        </div>
-        <div className="metric-card">
-          <p className="panel-label">다시 토론할 질문</p>
-          <p className="mt-2 font-bold">
-            {futureSelf.question ??
-              "이 위치에서 다시 태어나도 이 헌법을 받아들일 수 있나요?"}
+            {futureSelf.priority ?? "\uc0dd\ud65c \uc548\uc815, \uae30\ud68c, \uacf5\uc815\ud55c \ubd80\ub2f4"}
           </p>
         </div>
       </div>
 
       {result && (
         <div className="status-callout mt-5">
-          <p className="font-black">
-            이 위치에서의 헌법 만족도: {result.classResult.score}점
-          </p>
-          <p className="mt-2 font-serif leading-7">
+          <p className="font-black">{"내 역할에서 본 1차 설계 결과"}</p>
+          <p className="mt-2 leading-7">
             {result.classResult.message}
           </p>
         </div>
@@ -137,10 +202,9 @@ function FutureSelfCard({ group, phase }) {
         <div className="info-callout mt-5">
           <div className="font-extrabold text-brand">?</div>
           <div>
-            <p className="font-black">2차 토론</p>
+            <p className="font-black">{"2\ucc28 \ud1a0\ub860"}</p>
             <p className="info-callout-body mt-1">
-              이제 공개된 위치를 기준으로, 처음 만든 헌법이 정말 공정했는지
-              검토하고 필요한 조항을 조정하세요.
+              {"이제 공개된 역할을 기준으로 처음 만든 사회 설계가 정말 공정했는지 검토하세요."}
             </p>
           </div>
         </div>
@@ -154,12 +218,19 @@ function EventCards({ cards = [] }) {
 
   return (
     <section className="panel mt-6">
-      <p className="panel-label">오늘의 사회 뉴스</p>
-      <h2 className="panel-heading mt-1">우리 헌법이 만든 사건</h2>
+      <div className="event-section-header">
+        <div>
+          <p className="panel-label">{"\uc624\ub298\uc758 \uc0ac\ud68c \ub274\uc2a4"}</p>
+          <h2 className="panel-heading mt-1">{"\uc6b0\ub9ac \uc0ac\ud68c \uc124\uacc4\uac00 \ub9cc\ub4e0 \uc0ac\uac74"}</h2>
+        </div>
+        <div className="event-reflection-callout">
+          {"내 역할 말고 다른 시민 한 명을 골라 보세요. 그 시민도 이 사회를 공정하다고 느낄 수 있을까요?"}
+        </div>
+      </div>
       <div className="event-grid mt-5">
         {cards.map((card, index) => (
           <article key={`${card.title}-${index}`} className={`event-card ${card.type ?? "mixed"}`}>
-            <p className="event-card-label">NEWS {index + 1}</p>
+            <p className="event-card-label">사건 {index + 1}</p>
             <h3>{card.title}</h3>
             <p>{card.body}</p>
             <strong>{card.question}</strong>
@@ -170,37 +241,76 @@ function EventCards({ cards = [] }) {
   );
 }
 
+function PresentationStepCard({ label, children, prompt }) {
+  return (
+    <div className="presentation-card-item">
+      <div className="presentation-card-content">
+        <p className="panel-label">{label}</p>
+        {children}
+      </div>
+      <div className="presentation-card-prompt">{prompt}</div>
+    </div>
+  );
+}
+
+function NewsSummary({ cards = [] }) {
+  if (!cards.length) {
+    return <p>{"\uc0ac\uac74 \uce74\ub4dc\uac00 \uacf5\uac1c\ub418\uba74 \ud55c \uac00\uc9c0\ub97c \uace8\ub77c \uc815\ub9ac\ud558\uc138\uc694."}</p>;
+  }
+
+  return (
+    <ul className="news-summary-list">
+      {cards.slice(0, 3).map((card, index) => (
+        <li key={`${card.title}-${index}`}>사건 {index + 1}: {card.title}</li>
+      ))}
+    </ul>
+  );
+}
+
 function PresentationCard({ group }) {
   const firstRound = group?.history?.[0];
   const result = group?.result;
+  const eventCards = result?.eventCards ?? [];
 
   if (!firstRound && !result) return null;
 
   return (
     <section className="panel mt-6">
-      <p className="panel-label">발표 준비 카드</p>
-      <h2 className="panel-heading mt-1">우리 모둠 발표 흐름</h2>
+      <p className="panel-label">{"\ubc1c\ud45c \uc900\ube44 \uce74\ub4dc"}</p>
+      <h2 className="panel-heading mt-1">{"\uc6b0\ub9ac \ubaa8\ub460 \ubc1c\ud45c \ud750\ub984"}</h2>
       <div className="presentation-grid mt-5">
-        <div>
-          <p className="panel-label">1차 헌법</p>
-          <p>{formatPolicySummary(firstRound?.constitution ?? group.constitution)}</p>
-        </div>
-        <div>
-          <p className="panel-label">미래의 나</p>
-          <p>{group.assignedClass?.label ?? firstRound?.assignedClass?.label ?? "아직 공개 전"}</p>
-        </div>
-        <div>
-          <p className="panel-label">최종 헌법</p>
-          <p>{formatPolicySummary(group.constitution)}</p>
-        </div>
-        <div>
-          <p className="panel-label">발표 질문</p>
-          <p>우리 헌법은 무지의 베일 뒤에서도 공정하다고 말할 수 있나요?</p>
-        </div>
+        <PresentationStepCard
+          label={"1\ucc28 \uc124\uacc4"}
+          prompt={"\uc65c \uc774 \uc120\ud0dd\uc744 \ud588\ub294\uc9c0, \ub2e4\ub978 \uc120\ud0dd\uc744 \ud558\uc9c0 \uc54a\uc740 \uc774\uc720\ub97c \uc124\uba85\ud558\uc138\uc694."}
+        >
+          <PolicySummary constitution={firstRound?.constitution ?? group.constitution} />
+        </PresentationStepCard>
+
+        <PresentationStepCard
+          label={"\ubbf8\ub798\uc758 \ub098"}
+          prompt={"1\ucc28 \uc124\uacc4\uac00 \ub098\uc758 \uc0dd\ud65c\uc5d0 \uc5b4\ub5a4 \uc601\ud5a5\uc744 \uc8fc\uc5c8\ub294\uc9c0 \ub9d0\ud558\uc138\uc694."}
+        >
+          <p>{group.assignedClass?.label ?? firstRound?.assignedClass?.label ?? "\uc544\uc9c1 \uacf5\uac1c \uc804"}</p>
+        </PresentationStepCard>
+
+        <PresentationStepCard
+          label={"\uc624\ub298\uc758 \uc0ac\ud68c \ub274\uc2a4"}
+          prompt={"사건 하나를 골라, 이 사회가 누구에게 유리하고 불리한지 설명하세요."}
+        >
+          <NewsSummary cards={eventCards} />
+        </PresentationStepCard>
+
+        <PresentationStepCard
+          label={"2\ucc28 \uc124\uacc4"}
+          prompt={"\ub2ec\ub77c\uc9c4 \uc120\ud0dd\uc740 \ubb34\uc5c7\uc774\uace0 \uc65c \ubc14\uafb8\uc5c8\ub294\uc9c0, \uc720\uc9c0\ud55c \uc120\ud0dd\uc740 \uc65c \uc720\uc9c0\ud588\ub294\uc9c0 \uc124\uba85\ud558\uc138\uc694."}
+        >
+          <PolicySummary constitution={group.constitution} />
+        </PresentationStepCard>
       </div>
     </section>
   );
 }
+
 
 function PolicyChoiceControl({ label, valueLabel, options, selectedKey, info, disabled, onChange }) {
   return (
@@ -318,7 +428,7 @@ export default function StudentApp({ pin, groupId }) {
   if (loading) {
     return (
       <main className="center-page app-page text-3xl font-bold text-brand">
-        헌법 회의장에 입장 중
+        사회 설계 회의장에 입장 중
       </main>
     );
   }
@@ -338,7 +448,7 @@ export default function StudentApp({ pin, groupId }) {
         <div className="flex items-center gap-4">
           <div className="brand-logo">붕</div>
           <div>
-            <p className="brand-kicker">헌법 제정 회의</p>
+            <p className="brand-kicker">공정한 사회 설계 회의</p>
             <h1 className="brand-title">{group.name}</h1>
           </div>
         </div>
@@ -360,6 +470,7 @@ export default function StudentApp({ pin, groupId }) {
       </header>
 
       <FutureSelfCard group={group} phase={phase} />
+      <StudentInsightCards result={group?.result} />
       <EventCards cards={group?.result?.eventCards ?? []} />
       <PresentationCard group={group} />
 
@@ -451,7 +562,7 @@ export default function StudentApp({ pin, groupId }) {
           onClick={handleSubmit}
           className="button-primary flex h-24 w-full items-center justify-center text-4xl"
         >
-          {submitted ? "헌법 제출 완료" : "이 헌법으로 제출하기"}
+          {submitted ? "설계 제출 완료" : "이 설계로 제출하기"}
         </button>
       </footer>
       </div>

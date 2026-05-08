@@ -1,27 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-  RadialBarChart,
-  RadialBar
-} from "recharts";
-import {
   SESSION_PHASES,
   getTaxPolicy,
   getBudgetDirection,
   getWagePolicy,
   useGameData
 } from "./useGameData";
-import { getAppPath, getAppUrl } from "./routes";
+import { getAppPath } from "./routes";
 
-const COLORS = ["#1B6BFF", "#2E7D4F", "#0A2E7A"];
 const SESSION_SECONDS = 5 * 60;
 const TEACHER_PIN = "1234";
 const AUTO_CREATE_LOCK_KEY = "constitution-game:auto-create-lock";
@@ -50,15 +36,6 @@ const formatDateTime = value => {
 const phaseLabel = phase =>
   SESSION_PHASES.find(item => item.key === phase)?.label ?? "토론";
 
-const getStudentUrl = (pin, groupId) => {
-  return getAppUrl({ role: "student", pin, groupId });
-};
-
-const getHomeUrl = () => getAppUrl();
-
-const getQrUrl = value =>
-  `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(value)}`;
-
 const formatTaxPolicy = constitution => getTaxPolicy(constitution).label;
 
 const formatBudgetDirection = constitution =>
@@ -66,10 +43,21 @@ const formatBudgetDirection = constitution =>
 
 const formatWagePolicy = constitution => getWagePolicy(constitution).label;
 
-const formatPolicySummary = constitution =>
-  `세금 ${formatTaxPolicy(constitution)} · 예산 방향 ${formatBudgetDirection(
-    constitution
-  )} · 최저임금 ${formatWagePolicy(constitution)}`;
+function PolicySummary({ constitution }) {
+  return (
+    <ul className="policy-summary-list">
+      <li>
+        <span>세금</span>: {formatTaxPolicy(constitution)}
+      </li>
+      <li>
+        <span>예산 방향</span>: {formatBudgetDirection(constitution)}
+      </li>
+      <li>
+        <span>최저임금</span>: {formatWagePolicy(constitution)}
+      </li>
+    </ul>
+  );
+}
 
 const downloadCsv = ({ pin, groups }) => {
   const headers = [
@@ -82,11 +70,11 @@ const downloadCsv = ({ pin, groups }) => {
     "국가 예산 방향",
     "최저임금 방향",
     "미래의 나",
-    "생존 지수",
-    "자산 성장률",
-    "사회 통합도",
-    "최종 점수",
-    "결과 메시지"
+    "가장 불리한 시민도 버틸 수 있는가?",
+    "경제 활동의 자유는 얼마나 남아 있는가?",
+    "모두가 이 규칙을 받아들일 수 있는가?",
+    "종합 해석",
+    "해석 메시지"
   ];
 
   const rows = groups.map(group => [
@@ -99,10 +87,10 @@ const downloadCsv = ({ pin, groups }) => {
     formatBudgetDirection(group.constitution),
     formatWagePolicy(group.constitution),
     group.assignedClass?.label,
-    group.result?.survivalIndex,
-    group.result?.assetGrowth,
-    group.result?.socialIntegration,
-    group.result?.classResult?.score,
+    group.result ? getSurvivalInsight(group.result.survivalIndex).status : "",
+    group.result ? getFreedomInsight(group.result.assetGrowth).status : "",
+    group.result ? getIntegrationInsight(group.result.socialIntegration).status : "",
+    group.result?.classResult?.label,
     group.result?.classResult?.message
   ]);
 
@@ -115,7 +103,7 @@ const downloadCsv = ({ pin, groups }) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `헌법제정게임_${pin || "session"}.csv`;
+  link.download = `WhoAmI_정의로운사회만들기_${pin || "session"}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -136,11 +124,11 @@ const downloadDetailedCsv = ({ pin, groups }) => {
     "최종 국가 예산 방향",
     "최종 최저임금 방향",
     "미래 위치",
-    "생존 지수",
-    "자산 성장률",
-    "사회 통합도",
-    "최종 점수",
-    "결과 메시지",
+    "가장 불리한 시민도 버틸 수 있는가?",
+    "경제 활동의 자유는 얼마나 남아 있는가?",
+    "모두가 이 규칙을 받아들일 수 있는가?",
+    "종합 해석",
+    "해석 메시지",
     "사건 카드 1",
     "사건 카드 2",
     "사건 카드 3"
@@ -164,10 +152,10 @@ const downloadDetailedCsv = ({ pin, groups }) => {
       formatBudgetDirection(group.constitution),
       formatWagePolicy(group.constitution),
       group.assignedClass?.label,
-      group.result?.survivalIndex,
-      group.result?.assetGrowth,
-      group.result?.socialIntegration,
-      group.result?.classResult?.score,
+      group.result ? getSurvivalInsight(group.result.survivalIndex).status : "",
+      group.result ? getFreedomInsight(group.result.assetGrowth).status : "",
+      group.result ? getIntegrationInsight(group.result.socialIntegration).status : "",
+      group.result?.classResult?.label,
       group.result?.classResult?.message,
       eventCards[0] ? `${eventCards[0].title} - ${eventCards[0].question}` : "",
       eventCards[1] ? `${eventCards[1].title} - ${eventCards[1].question}` : "",
@@ -184,49 +172,102 @@ const downloadDetailedCsv = ({ pin, groups }) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `헌법제정게임_수업기록_${pin || "session"}.csv`;
+  link.download = `WhoAmI_정의로운사회만들기_수업기록_${pin || "session"}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
 };
 
-function ScoreCard({ label, value, suffix = "점" }) {
-  return (
-    <div className="metric-card">
-      <p className="text-base font-bold muted">{label}</p>
-      <p className="mt-2 text-4xl font-black text-brand">
-        {value}
-        <span className="text-xl">{suffix}</span>
-      </p>
-    </div>
-  );
-}
+const getSurvivalInsight = value => {
+  if (value >= 80) {
+    return {
+      title: "가장 불리한 시민도 버틸 수 있는가?",
+      status: "\uae30\ubcf8 \uc0dd\ud65c\uc744 \uc9c0\ud0ac \uac00\ub2a5\uc131\uc774 \ub192\uc2b5\ub2c8\ub2e4.",
+      body: "\uc0dd\uacc4, \uc758\ub8cc, \uc8fc\uac70 \uac19\uc740 \ucd5c\uc18c \uc0dd\ud65c \uc7a5\uce58\uac00 \ube44\uad50\uc801 \ub450\ud141\uac8c \ub9c8\ub828\ub41c \uc0ac\ud68c\uc785\ub2c8\ub2e4.",
+      question: "누가 가장 보호받고, 누가 부담을 느낄까요?"
+    };
+  }
 
-function GroupLockPanel({ groupLocked, connectedCount, totalCount, onFinalize }) {
-  return (
-    <section className="panel">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="panel-label">참여 모둠</p>
-          <h2 className="panel-heading">
-            {groupLocked ? `${totalCount}개 모둠 확정` : `${connectedCount}/${totalCount} 입장`}
-          </h2>
-          <p className="mt-2 text-sm font-bold muted">
-            확정하면 입장하지 않은 모둠은 대시보드에서 사라집니다.
-          </p>
-        </div>
+  if (value >= 60) {
+    return {
+      title: "가장 불리한 시민도 버틸 수 있는가?",
+      status: "\uae30\ubcf8 \uc0dd\ud65c\uc740 \uac00\ub2a5\ud558\uc9c0\ub9cc \ubd88\uc548\uc815\ud55c \uc9c0\uc810\uc774 \ub0a8\uc544 \uc788\uc2b5\ub2c8\ub2e4.",
+      body: "\uac00\uc7a5 \ubd88\ub9ac\ud55c \uc704\uce58\uc758 \uc2dc\ubbfc\uc774 \ubc84\ud2f8 \uc218\ub294 \uc788\uc9c0\ub9cc, \uc704\uae30 \uc0c1\ud669\uc5d0\uc11c \ud754\ub4e4\ub9b4 \uac00\ub2a5\uc131\uc774 \uc788\uc2b5\ub2c8\ub2e4.",
+      question: "어떤 시민에게 보호가 더 필요하고, 그 비용은 누가 부담하나요?"
+    };
+  }
 
-        <button
-          type="button"
-          onClick={onFinalize}
-          disabled={groupLocked || connectedCount === 0}
-          className="button-primary h-14 min-w-36 px-5 text-lg"
-        >
-          {groupLocked ? "확정 완료" : "모둠 확정"}
-        </button>
-      </div>
-    </section>
+  return {
+    title: "가장 불리한 시민도 버틸 수 있는가?",
+    status: "\uc0dd\ud65c \uc548\uc815 \uc7a5\uce58\uac00 \ubd80\uc871\ud569\ub2c8\ub2e4.",
+    body: "\uac00\uc7a5 \ubd88\ub9ac\ud55c \uc704\uce58\uc5d0\uc11c \uc774 \uc0ac\ud68c \uc124\uacc4\ub97c \ubc1b\uc544\ub4e4\uc774\uae30 \uc5b4\ub835\ub2e4\uace0 \ub290\ub084 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+    question: "가장 불리한 시민이라면 이 규칙을 받아들일 수 있을까요?"
+  };
+};
+
+const getFreedomInsight = value => {
+  if (value >= 0) {
+    return {
+      title: "경제 활동의 자유는 얼마나 남아 있는가?",
+      status: "\uacbd\uc81c \ud65c\ub3d9\uc758 \uc790\uc720\uac00 \ub109\ub109\ud788 \uc720\uc9c0\ub429\ub2c8\ub2e4.",
+      body: "\uc138\uae08\uacfc \uc81c\ub3c4\uac00 \uc790\uc0b0 \ud615\uc131, \ud22c\uc790, \ucc3d\uc5c5 \uc758\uc695\uc744 \ud06c\uac8c \ub204\ub974\uc9c0 \uc54a\ub294 \uc0ac\ud68c\uc785\ub2c8\ub2e4.",
+      question: "이 자유가 다른 시민의 생활 안정과도 함께 갈 수 있나요?"
+    };
+  }
+
+  if (value >= -15) {
+    return {
+      title: "경제 활동의 자유는 얼마나 남아 있는가?",
+      status: "\uacf5\ub3d9\uccb4 \ubd80\ub2f4\uacfc \uc790\uc720\uc758 \uade0\ud615\uc744 \ub530\uc838\ubcfc \uc9c0\uc810\uc785\ub2c8\ub2e4.",
+      body: "\ubcf5\uc9c0\uc640 \uc0ac\ud68c \uc548\uc815\uc744 \uc704\ud55c \ubd80\ub2f4\uc774 \uc0dd\uae30\uc9c0\ub9cc, \uacbd\uc81c \ud65c\ub3d9\uc758 \ub3d9\uae30\ub97c \uc644\uc804\ud788 \uaebd\ub294 \uc815\ub3c4\ub294 \uc544\ub2d9\ub2c8\ub2e4.",
+      question: "누가 더 자유로워지고, 누가 더 부담을 지나요?"
+    };
+  }
+
+  return {
+    title: "경제 활동의 자유는 얼마나 남아 있는가?",
+    status: "\uacbd\uc81c \ud65c\ub3d9\uc758 \uc790\uc720\uc5d0 \ud070 \ubd80\ub2f4\uc774 \uc0dd\uae38 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+    body: "\uacf5\ub3d9\uccb4 \ubcf4\uc7a5\uc744 \uac15\ud654\ud55c \ub300\uc2e0, \uc77c\ubd80 \uc2dc\ubbfc\uc740 \ub178\ub825\uc758 \ubcf4\uc0c1\uc774\ub098 \uc790\uc0b0 \ud615\uc131 \uae30\ud68c\uac00 \uc904\uc5c8\ub2e4\uace0 \ub290\ub084 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+    question: "평등을 위해 줄어든 자유를 어떤 시민이 가장 크게 느낄까요?"
+  };
+};
+
+const getIntegrationInsight = value => {
+  if (value >= 80) {
+    return {
+      title: "모두가 이 규칙을 받아들일 수 있는가?",
+      status: "\uc11c\ub85c \uac19\uc740 \uaddc\uce59\uc744 \ubc1b\uc544\ub4e4\uc77c \uac00\ub2a5\uc131\uc774 \ub192\uc2b5\ub2c8\ub2e4.",
+      body: "\uacc4\uce35 \uac04 \uaca9\ucc28\uc640 \uac08\ub4f1\uc774 \ube44\uad50\uc801 \ub0ae\uc544, \uc0ac\ud68c \uad6c\uc131\uc6d0\uc774 \uac19\uc740 \uc81c\ub3c4\ub97c \uacf5\uc815\ud558\ub2e4\uace0 \ub290\ub084 \uc5ec\uc9c0\uac00 \ud07d\ub2c8\ub2e4.",
+      question: "다른 역할의 시민도 이 규칙을 공정하다고 느낄까요?"
+    };
+  }
+
+  if (value >= 60) {
+    return {
+      title: "모두가 이 규칙을 받아들일 수 있는가?",
+      status: "\uac08\ub4f1\uc744 \uc904\uc77c \uc7a5\uce58\uac00 \uc788\uc9c0\ub9cc \ubcf4\uc644\uc774 \ud544\uc694\ud569\ub2c8\ub2e4.",
+      body: "\uc0ac\ud68c \uc804\uccb4\uac00 \ud06c\uac8c \ud754\ub4e4\ub9ac\uc9c0\ub294 \uc54a\uc9c0\ub9cc, \uc77c\ubd80 \uacc4\uce35\uc740 \ubd80\ub2f4\uacfc \ud61c\ud0dd\uc758 \ubc30\ubd84\uc744 \ubd88\uacf5\uc815\ud558\ub2e4\uace0 \ub290\ub084 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+      question: "어떤 시민이 이 제도에 가장 불만을 가질까요?"
+    };
+  }
+
+  return {
+    title: "모두가 이 규칙을 받아들일 수 있는가?",
+    status: "\uc0ac\ud68c\uc801 \uac08\ub4f1\uc774 \ucee4\uc9c8 \uc704\ud5d8\uc774 \uc788\uc2b5\ub2c8\ub2e4.",
+    body: "\uacc4\uce35 \uc0ac\uc774\uc758 \ucc28\uc774\uac00 \ucee4\uc838 \uc11c\ub85c\uac00 \uac19\uc740 \uaddc\uce59\uc744 \uacf5\uc815\ud558\ub2e4\uace0 \ubc1b\uc544\ub4e4\uc774\uae30 \uc5b4\ub824\uc6b8 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+    question: "누구에게 혜택이 가고, 누구에게 부담이 커졌나요?"
+  };
+};
+
+function InterpretationCard({ insight }) {
+  return (
+    <article className="interpretation-card">
+      <p className="panel-label">{insight.title}</p>
+      <h3>{insight.status}</h3>
+      <p>{insight.body}</p>
+      <strong>{insight.question}</strong>
+    </article>
   );
 }
 
@@ -240,7 +281,7 @@ function TimerStartPanel({ groupLocked, isRunning, remainingSeconds, onStart }) 
             {isRunning ? "진행 중" : "시작 대기"}
           </h2>
           <p className="mt-2 text-sm font-bold muted">
-            모둠을 확정한 뒤 시작하면 그때부터 5분 타이머가 줄어듭니다.
+            {isRunning ? "타이머가 진행 중입니다." : "모둠 확정 후 수업 시작을 누르면 5분 타이머가 시작됩니다."}
           </p>
         </div>
 
@@ -271,49 +312,31 @@ function TimerStartPanel({ groupLocked, isRunning, remainingSeconds, onStart }) 
   );
 }
 
-function GroupResultSwitcher({ groups, selectedGroupId, onSelect }) {
-  if (groups.length <= 1) return null;
+
+function PhaseControls({ phase, onChange }) {
+  const nextPhase = getNextPhase(phase);
 
   return (
-    <div className="result-switcher">
-      <p className="panel-label">결과 볼 모둠</p>
-      <div className="result-switcher-buttons">
-        {groups.map(group => {
-          const active = group.id === selectedGroupId;
-
-          return (
-            <button
-              key={group.id}
-              type="button"
-              onClick={() => onSelect(group.id)}
-              className={`result-group-button ${active ? "active" : ""}`}
-            >
-              <span>{group.name}</span>
-              <small>{group.isSubmitted ? "제출" : group.connected ? "작성 중" : "미접속"}</small>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function PhaseControls({ phase, onChange, groups, selectedGroupId, onSelectGroup }) {
-  const showGroupSwitcher = ["result", "revision", "final"].includes(phase);
-
-  return (
-    <section className="panel">
-      <div className="mb-4 flex items-center justify-between gap-4">
+    <section className="panel lesson-flow-panel">
+      <div className="lesson-flow-header">
         <div>
-          <p className="panel-label">게임 진행</p>
-          <h2 className="panel-heading">{phaseLabel(phase)}</h2>
+          <p className="panel-label">수업 흐름</p>
+          <h2 className="panel-heading mt-1">현재 단계: {phaseLabel(phase)}</h2>
+          <p className="mt-2 font-bold muted">
+            1차 설계 → 역할 공개 → 생활 모습 확인 → 사건 검토 → 2차 설계 → 발표
+          </p>
         </div>
-        <p className="text-sm font-bold muted">
-          토론 → 헌법 제정 → 결과 확인 → 새 헌법 토론 → 최종 결과 및 발표
-        </p>
+        <button
+          type="button"
+          disabled={!nextPhase}
+          onClick={() => nextPhase && onChange(nextPhase.key)}
+          className="button-primary h-16 min-w-48 px-6 text-xl"
+        >
+          {nextPhase ? `${nextPhase.label} 단계로 진행` : "진행 완료"}
+        </button>
       </div>
 
-      <div className="phase-grid">
+      <div className="phase-grid mt-5">
         {SESSION_PHASES.map(item => {
           const active = item.key === phase;
 
@@ -332,64 +355,6 @@ function PhaseControls({ phase, onChange, groups, selectedGroupId, onSelectGroup
           );
         })}
       </div>
-
-      {showGroupSwitcher && (
-        <GroupResultSwitcher
-          groups={groups}
-          selectedGroupId={selectedGroupId}
-          onSelect={onSelectGroup}
-        />
-      )}
-    </section>
-  );
-}
-
-function StudentEntryPanel({ pin, groups }) {
-  const homeUrl = getHomeUrl();
-
-  return (
-    <section className="panel entry-panel">
-      <div>
-        <p className="panel-label">학생 입장</p>
-        <h2 className="panel-heading mt-1">공유 링크와 QR</h2>
-        <p className="mt-2 font-bold muted">
-          학생에게는 기본 주소와 참가 PIN만 안내하면 됩니다. 모둠별 바로가기 링크도 보조로 사용할 수 있습니다.
-        </p>
-      </div>
-
-      <div className="entry-layout mt-5">
-        <div className="metric-card">
-          <p className="panel-label">학생 접속 주소</p>
-          <a className="entry-url mt-2" href={homeUrl} target="_blank" rel="noreferrer">
-            {homeUrl}
-          </a>
-          <div className="mt-4 grid gap-3 md:grid-cols-[160px_1fr]">
-            <div className="value-pill">{pin}</div>
-            <p className="font-bold muted">
-              학생은 이 참가 PIN을 입력한 뒤 자기 모둠을 선택해서 입장합니다.
-            </p>
-          </div>
-        </div>
-
-        <div className="qr-card">
-          <img src={getQrUrl(homeUrl)} alt="학생 입장 QR" />
-          <p className="qr-caption">학생 접속 QR</p>
-        </div>
-      </div>
-
-      <div className="entry-links mt-5">
-        {groups.map(group => (
-          <a
-            key={group.id}
-            href={getStudentUrl(pin, group.id)}
-            target="_blank"
-            rel="noreferrer"
-            className="button-secondary"
-          >
-            {group.name} 바로가기
-          </a>
-        ))}
-      </div>
     </section>
   );
 }
@@ -400,41 +365,18 @@ const getNextPhase = phase => {
   return SESSION_PHASES[currentIndex + 1] ?? null;
 };
 
-function QuickProgressPanel({ phase, onChange }) {
-  const nextPhase = getNextPhase(phase);
-
-  return (
-    <section className="panel quick-panel">
-      <div>
-        <p className="panel-label">교사 진행</p>
-        <h2 className="panel-heading mt-1">현재 단계: {phaseLabel(phase)}</h2>
-        <p className="mt-2 font-bold muted">
-          수업 중에는 큰 버튼 하나로 다음 단계로 넘기고, 필요할 때만 아래 단계표에서 직접 조정하세요.
-        </p>
-      </div>
-      <button
-        type="button"
-        disabled={!nextPhase}
-        onClick={() => nextPhase && onChange(nextPhase.key)}
-        className="button-primary h-16 min-w-48 px-6 text-xl"
-      >
-        {nextPhase ? `${nextPhase.label} 단계로 진행` : "진행 완료"}
-      </button>
-    </section>
-  );
-}
 
 function TeacherEventCards({ cards = [] }) {
   if (!cards.length) return null;
 
   return (
     <section className="panel">
-      <p className="panel-label">뉴스/사건 카드</p>
-      <h2 className="panel-heading mt-1">이 헌법이 만든 사회적 장면</h2>
+      <p className="panel-label">오늘의 사회 뉴스</p>
+      <h2 className="panel-heading mt-1">우리 사회 설계가 만든 사건</h2>
       <div className="event-grid mt-5">
         {cards.map((card, index) => (
           <article key={`${card.title}-${index}`} className={`event-card ${card.type ?? "mixed"}`}>
-            <p className="event-card-label">NEWS {index + 1}</p>
+            <p className="event-card-label">사건 {index + 1}</p>
             <h3>{card.title}</h3>
             <p>{card.body}</p>
             <strong>{card.question}</strong>
@@ -445,48 +387,13 @@ function TeacherEventCards({ cards = [] }) {
   );
 }
 
-function TeacherPresentationCard({ group }) {
-  const firstRound = group?.history?.[0];
-  const result = group?.result;
-
-  if (!firstRound && !result) return null;
-
-  return (
-    <section className="panel">
-      <p className="panel-label">발표 카드</p>
-      <h2 className="panel-heading mt-1">{group.name} 발표 흐름</h2>
-      <div className="presentation-grid mt-5">
-        <div>
-          <p className="panel-label">처음 선택</p>
-          <p>
-            {formatPolicySummary(firstRound?.constitution ?? group.constitution)}
-          </p>
-        </div>
-        <div>
-          <p className="panel-label">드러난 미래 위치</p>
-          <p>{group.assignedClass?.label ?? firstRound?.assignedClass?.label ?? "아직 공개 전"}</p>
-        </div>
-        <div>
-          <p className="panel-label">최종 선택</p>
-          <p>
-            {formatPolicySummary(group.constitution)}
-          </p>
-        </div>
-        <div>
-          <p className="panel-label">발표 질문</p>
-          <p>처음 규칙과 최종 규칙은 어떻게 달라졌고, 그 변화는 누구에게 더 공정한가요?</p>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function FutureSelfPanel({ selectedGroup }) {
   const futureSelf = selectedGroup?.assignedClass;
 
   if (!futureSelf) {
     return (
-      <div className="metric-card mt-5">
+      <div className="metric-card">
         <p className="panel-label">무지의 베일</p>
         <p className="mt-2 font-bold">
           아직 이 모둠의 미래 위치는 공개되지 않았습니다.
@@ -496,28 +403,24 @@ function FutureSelfPanel({ selectedGroup }) {
   }
 
   return (
-    <div className="future-card mt-5">
-      <p className="panel-label">공개된 미래의 나</p>
-      <h3 className="panel-heading mt-1">{futureSelf.label}</h3>
-      <p className="mt-3 font-bold text-[var(--color-text)]">
-        {futureSelf.headline ?? "공개된 위치에서 헌법의 영향을 다시 살펴봅니다."}
-      </p>
-      <p className="mt-3 font-serif text-lg leading-8 text-[var(--color-text)]">
-        {futureSelf.situation ??
-          "이 위치의 시민에게 세금, 복지, 최저임금이 어떤 의미인지 토론해 보세요."}
-      </p>
-      <div className="mt-4 grid gap-3">
-        <div className="metric-card">
-          <p className="panel-label">중요한 기준</p>
+    <div className="future-card teacher-future-card">
+      <div>
+        <p className="panel-label">공개된 미래의 나</p>
+        <h3 className="panel-heading mt-1">{futureSelf.label}</h3>
+        <p className="mt-3 font-bold text-[var(--color-text)]">
+          {futureSelf.headline ?? "공개된 역할에서 사회 제도의 영향을 다시 살펴봅니다."}
+        </p>
+        <p className="mt-3 text-lg leading-8 text-[var(--color-text)]">
+          {futureSelf.situation ??
+            "이 역할의 시민에게 세금, 예산, 최저임금 선택이 어떤 이익과 부담을 만드는지 토론해 보세요."}
+        </p>
+      </div>
+
+      <div className="future-detail-grid">
+        <div className="metric-card future-priority-card">
+          <p className="panel-label">내가 특히 따져볼 기준</p>
           <p className="mt-2 font-bold">
             {futureSelf.priority ?? "생활 안정, 기회, 공정한 부담"}
-          </p>
-        </div>
-        <div className="metric-card">
-          <p className="panel-label">재토론 질문</p>
-          <p className="mt-2 font-bold">
-            {futureSelf.question ??
-              "이 위치에서 다시 태어나도 이 헌법을 받아들일 수 있나요?"}
           </p>
         </div>
       </div>
@@ -528,10 +431,10 @@ function FutureSelfPanel({ selectedGroup }) {
 function ComparisonTable({ groups, selectedGroupId, onSelect }) {
   return (
     <section className="panel">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <p className="panel-label">전체 비교</p>
-          <h2 className="panel-heading">모둠별 헌법과 결과</h2>
+          <h2 className="panel-heading">모둠별 선택 변화</h2>
         </div>
         <p className="text-sm font-bold muted">
           행을 누르면 발표 모둠으로 선택됩니다.
@@ -539,26 +442,36 @@ function ComparisonTable({ groups, selectedGroupId, onSelect }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="data-table">
+        <table className="data-table comparison-table">
           <thead>
             <tr>
-              <th className="px-3 py-3">모둠</th>
-              <th className="px-3 py-3">상태</th>
-              <th className="px-3 py-3">세금 방향</th>
-              <th className="px-3 py-3">예산 방향</th>
-              <th className="px-3 py-3">최저임금 방향</th>
-              <th className="px-3 py-3 text-right">1차 결과</th>
-              <th className="px-3 py-3">미래의 나</th>
-              <th className="px-3 py-3 text-right">생존</th>
-              <th className="px-3 py-3 text-right">성장</th>
-              <th className="px-3 py-3 text-right">통합</th>
-              <th className="px-3 py-3 text-right">최종</th>
+              <th rowSpan="2">모둠</th>
+              <th rowSpan="2">상태</th>
+              <th colSpan="3" className="text-center">1차 제출</th>
+              <th rowSpan="2">공개된 역할</th>
+              <th colSpan="3" className="text-center">2차 제출</th>
+            </tr>
+            <tr>
+              <th>세금</th>
+              <th>예산 방향</th>
+              <th>최저임금</th>
+              <th>세금</th>
+              <th>예산 방향</th>
+              <th>최저임금</th>
             </tr>
           </thead>
           <tbody>
             {groups.map(group => {
               const active = group.id === selectedGroupId;
-              const firstResult = group.history?.[0]?.result?.classResult?.score;
+              const firstRound = group.history?.[0];
+              const firstConstitution =
+                firstRound?.constitution ??
+                (group.isSubmitted || group.result ? group.constitution : null);
+              const secondConstitution = firstRound && group.isSubmitted
+                ? group.constitution
+                : null;
+              const roleLabel =
+                group.assignedClass?.label ?? firstRound?.assignedClass?.label ?? "-";
 
               return (
                 <tr
@@ -570,29 +483,13 @@ function ComparisonTable({ groups, selectedGroupId, onSelect }) {
                   <td>
                     {group.isSubmitted ? "제출 완료" : group.connected ? "작성 중" : "미접속"}
                   </td>
-                  <td>
-                    {group.constitution ? formatTaxPolicy(group.constitution) : "-"}
-                  </td>
-                  <td>
-                    {group.constitution ? formatBudgetDirection(group.constitution) : "-"}
-                  </td>
-                  <td>
-                    {group.constitution ? formatWagePolicy(group.constitution) : "-"}
-                  </td>
-                  <td className="text-right">{firstResult ?? "-"}</td>
-                  <td>{group.assignedClass?.label ?? "-"}</td>
-                  <td className="text-right">
-                    {group.result?.survivalIndex ?? "-"}
-                  </td>
-                  <td className="text-right">
-                    {group.result?.assetGrowth ?? "-"}
-                  </td>
-                  <td className="text-right">
-                    {group.result?.socialIntegration ?? "-"}
-                  </td>
-                  <td className="text-right">
-                    {group.result?.classResult?.score ?? "-"}
-                  </td>
+                  <td>{firstConstitution ? formatTaxPolicy(firstConstitution) : "-"}</td>
+                  <td>{firstConstitution ? formatBudgetDirection(firstConstitution) : "-"}</td>
+                  <td>{firstConstitution ? formatWagePolicy(firstConstitution) : "-"}</td>
+                  <td className="role-cell">{roleLabel}</td>
+                  <td>{secondConstitution ? formatTaxPolicy(secondConstitution) : "-"}</td>
+                  <td>{secondConstitution ? formatBudgetDirection(secondConstitution) : "-"}</td>
+                  <td>{secondConstitution ? formatWagePolicy(secondConstitution) : "-"}</td>
                 </tr>
               );
             })}
@@ -633,40 +530,6 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
   const groupLocked = Boolean(session?.groupLocked);
   const isRunning = session?.status === "running";
   const isFinalPhase = phase === "final";
-
-  const chartData = selectedGroup?.constitution
-    ? [
-        {
-          name: getTaxPolicy(selectedGroup.constitution).shortLabel,
-          value: getTaxPolicy(selectedGroup.constitution).taxRate
-        },
-        {
-          name: getBudgetDirection(selectedGroup.constitution).shortLabel,
-          value: getBudgetDirection(selectedGroup.constitution).welfareBudget
-        },
-        {
-          name: getWagePolicy(selectedGroup.constitution).shortLabel,
-          value: Math.round(getWagePolicy(selectedGroup.constitution).minimumWage / 1000)
-        }
-      ]
-    : [];
-
-  const pieData = selectedGroup?.constitution
-    ? [
-        {
-          name: formatTaxPolicy(selectedGroup.constitution),
-          value: getTaxPolicy(selectedGroup.constitution).taxRate
-        },
-        {
-          name: formatBudgetDirection(selectedGroup.constitution),
-          value: getBudgetDirection(selectedGroup.constitution).welfareBudget
-        },
-        {
-          name: formatWagePolicy(selectedGroup.constitution),
-          value: Math.round(getWagePolicy(selectedGroup.constitution).minimumWage / 300)
-        }
-      ]
-    : [];
 
   const handleCreate = async () => {
     if (autoCreateRef.current) return;
@@ -859,7 +722,7 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
                 </span>
               )}
             </div>
-            <h1>헌법 제정 게임 PIN {pin}</h1>
+            <h1>Who am I : 정의로운 사회 만들기 PIN {pin}</h1>
           </div>
         </div>
 
@@ -882,7 +745,26 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
 
       <div className="dashboard-body">
         <aside className="sidebar">
-          <h2 className="panel-heading mb-4">모둠 현황</h2>
+          <div className="sidebar-heading-row">
+            <div>
+              <p className="panel-label">참여 모둠</p>
+              <h2 className="panel-heading">모둠 현황</h2>
+            </div>
+            <button
+              type="button"
+              onClick={handleFinalizeGroups}
+              disabled={groupLocked || connectedCount === 0}
+              className="button-primary sidebar-lock-button"
+            >
+              {groupLocked ? "확정" : "모둠 확정"}
+            </button>
+          </div>
+
+          <p className="sidebar-helper">
+            {groupLocked
+              ? `${groupList.length}개 모둠 확정 완료`
+              : `${connectedCount}/${groupList.length} 입장`}
+          </p>
 
           <div className="grid gap-3">
             {groupList.map(group => {
@@ -914,15 +796,6 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
         </aside>
 
         <section className="main-grid">
-          <StudentEntryPanel pin={pin} groups={groupList} />
-
-          <GroupLockPanel
-            groupLocked={groupLocked}
-            connectedCount={connectedCount}
-            totalCount={groupList.length}
-            onFinalize={handleFinalizeGroups}
-          />
-
           <TimerStartPanel
             groupLocked={groupLocked}
             isRunning={isRunning}
@@ -936,79 +809,20 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
             </p>
           )}
 
-          <QuickProgressPanel phase={phase} onChange={setPhase} />
-
-          <PhaseControls
-            phase={phase}
-            onChange={setPhase}
-            groups={groupList}
-            selectedGroupId={selectedGroup?.id}
-            onSelectGroup={selectGroup}
-          />
-
-          <div className="chart-row">
-            <section className="panel">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="panel-heading">
-                  {selectedGroup?.name ?? "모둠 선택"}
-                </h2>
-                <span className="section-badge">
-                  발표 모드
-                </span>
-              </div>
-
-              <div className="h-[330px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <XAxis dataKey="name" stroke="#5A6372" />
-                    <YAxis stroke="#5A6372" />
-                    <Tooltip
-                      contentStyle={{
-                        background: "#ffffff",
-                        border: "1px solid #cfd6e2",
-                        color: "#111418"
-                      }}
-                    />
-                    <Bar dataKey="value" fill="#1B6BFF" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-
-            <section className="panel">
-              <h2 className="panel-heading mb-4">헌법 구성 비율</h2>
-
-              <div className="h-[330px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={70}
-                      outerRadius={120}
-                      paddingAngle={4}
-                    >
-                      {pieData.map((_, index) => (
-                        <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: "#ffffff",
-                        border: "1px solid #cfd6e2",
-                        color: "#111418"
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          </div>
+          <PhaseControls phase={phase} onChange={setPhase} />
 
           <section className="panel">
-            <div className="result-row">
+            <div className="result-panel-header">
               <div>
+                <p className="panel-label">선택한 모둠</p>
+                <h2 className="panel-heading mt-1">{selectedGroup?.name ?? "모둠 선택"} 활동 결과</h2>
+              </div>
+              <p className="text-sm font-bold muted">
+                사이드바에서 모둠을 선택해 결과와 발표 자료를 확인합니다.
+              </p>
+            </div>
+            <div className="result-overview mt-5">
+              <div className="result-action-row">
                 <button
                   type="button"
                   disabled={
@@ -1019,89 +833,61 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
                 >
                   {selectedGroup?.rouletteDone
                     ? isFinalPhase
-                      ? "최종 결과 확인 완료"
+                      ? "2차 설계 결과 확인 완료"
                       : "미래의 나 공개 완료"
                     : rolling
                       ? "미래의 나 공개 중"
                       : isFinalPhase
-                        ? "최종 결과 확인"
-                        : "미래의 나 카드 공개"}
+                        ? "2차 설계 결과 확인"
+                        : "미래의 나 공개"}
                 </button>
 
-                <div className="metric-card mt-5 text-center">
-                  <p className="text-lg font-bold muted">공개된 위치</p>
+                <div className="metric-card text-center">
+                  <p className="text-lg font-bold muted">공개된 역할</p>
                   <p className="mt-3 text-4xl font-black text-brand">
                     {selectedGroup?.assignedClass?.label ?? slotText}
                   </p>
                 </div>
-
-                <FutureSelfPanel selectedGroup={selectedGroup} />
               </div>
 
+              <FutureSelfPanel selectedGroup={selectedGroup} />
+
               {selectedGroup?.result ? (
-                <div className="result-score-layout">
-                  <div className="result-score-grid">
-                    <ScoreCard
-                      label="빈곤층 생존 지수"
-                      value={selectedGroup.result.survivalIndex}
+                <div className="result-score-layout narrative-result-layout">
+                  <div className="result-score-grid narrative-result-grid">
+                    <InterpretationCard
+                      insight={getSurvivalInsight(selectedGroup.result.survivalIndex)}
                     />
-                    <ScoreCard
-                      label="상류층 자산 성장률"
-                      value={selectedGroup.result.assetGrowth}
-                      suffix="%"
+                    <InterpretationCard
+                      insight={getFreedomInsight(selectedGroup.result.assetGrowth)}
                     />
-                    <ScoreCard
-                      label="사회 통합도"
-                      value={selectedGroup.result.socialIntegration}
+                    <InterpretationCard
+                      insight={getIntegrationInsight(selectedGroup.result.socialIntegration)}
                     />
 
-                    <div className="metric-card result-final-card">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-2xl font-black">
-                          최종 판정: {selectedGroup.result.classResult.label}
-                        </h3>
-                      </div>
-                      <p className="mt-2 text-3xl font-black text-brand">
-                        {selectedGroup.result.classResult.score}점
-                      </p>
-                      <p className="mt-3 font-serif text-lg leading-8 text-[var(--color-text)]">
-                        {selectedGroup.result.classResult.message}
-                      </p>
+                    <div className="interpretation-card result-final-card narrative-final-card">
+                      <p className="panel-label">종합 해석</p>
+                      <h3>
+                        {selectedGroup.result.classResult.label} 역할에서 본 사회 설계
+                      </h3>
+                      <p>{selectedGroup.result.classResult.message}</p>
+                      <strong>
+                        발표에서는 1차 선택과 2차 선택이 어떻게 달라졌는지, 그 변화가 나와 다른 시민 모두에게 왜 설득력 있는지 설명해 보세요.
+                      </strong>
                     </div>
-                  </div>
-
-                  <div className="metric-card result-radial-card">
-                    <ResponsiveContainer width="100%" height={170}>
-                      <RadialBarChart
-                        innerRadius="35%"
-                        outerRadius="95%"
-                        data={[
-                          {
-                            name: "최종 점수",
-                            value: selectedGroup.result.classResult.score,
-                            fill: "#1B6BFF"
-                          }
-                        ]}
-                        startAngle={90}
-                        endAngle={-270}
-                      >
-                        <RadialBar dataKey="value" cornerRadius={8} />
-                      </RadialBarChart>
-                    </ResponsiveContainer>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-soft)] text-2xl font-bold text-[var(--color-text-muted)]">
+                <div className="empty-result-panel">
                   {isFinalPhase
-                    ? "최종 결과 확인 후 점수가 표시됩니다."
-                    : "룰렛 이후 결과 점수가 표시됩니다."}
+                    ? "2차 설계 결과 확인 후 결과가 표시됩니다."
+                    : "역할 공개 이후 우리 선택이 만든 결과가 표시됩니다."}
                 </div>
               )}
             </div>
           </section>
 
           <TeacherEventCards cards={selectedGroup?.result?.eventCards ?? []} />
-          <TeacherPresentationCard group={selectedGroup} />
 
           <ComparisonTable
             groups={groupList}
