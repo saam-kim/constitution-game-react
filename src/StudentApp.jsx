@@ -346,9 +346,9 @@ function PolicyChoiceControl({ label, valueLabel, options, selectedKey, info, di
   );
 }
 
-export default function StudentApp({ pin, groupId }) {
+export default function StudentApp({ pin, groupId, preview = false }) {
   const {
-    group,
+    group: liveGroup,
     loading,
     phase,
     inputOpen,
@@ -356,7 +356,7 @@ export default function StudentApp({ pin, groupId }) {
     connectGroup,
     updateConstitution,
     submitConstitution
-  } = useGameData(pin, groupId);
+  } = useGameData(pin, preview ? null : groupId);
 
   const [constitution, setConstitution] = useState({
     taxPolicy: "shared",
@@ -369,16 +369,18 @@ export default function StudentApp({ pin, groupId }) {
   const [checkedItems, setCheckedItems] = useState([]);
 
   useEffect(() => {
-    connectGroup();
-  }, []);
+    if (!preview) {
+      connectGroup();
+    }
+  }, [preview]);
 
   useEffect(() => {
-    if (group?.constitution) {
-      const taxPolicy = getTaxPolicy(group.constitution);
-      const budgetDirection = getBudgetDirection(group.constitution);
-      const wagePolicy = getWagePolicy(group.constitution);
+    if (liveGroup?.constitution) {
+      const taxPolicy = getTaxPolicy(liveGroup.constitution);
+      const budgetDirection = getBudgetDirection(liveGroup.constitution);
+      const wagePolicy = getWagePolicy(liveGroup.constitution);
       setConstitution({
-        ...group.constitution,
+        ...liveGroup.constitution,
         taxPolicy: taxPolicy.key,
         taxRate: taxPolicy.taxRate,
         budgetDirection: budgetDirection.key,
@@ -387,16 +389,25 @@ export default function StudentApp({ pin, groupId }) {
         minimumWage: wagePolicy.minimumWage
       });
     }
-  }, [group?.constitution]);
+  }, [liveGroup?.constitution]);
 
   useEffect(() => {
-    if (inputOpen && !group?.isSubmitted) {
+    if (inputOpen && !liveGroup?.isSubmitted) {
       setCheckedItems([]);
     }
-  }, [phase, group?.isSubmitted, inputOpen]);
+  }, [phase, liveGroup?.isSubmitted, inputOpen]);
 
+  const previewGroup = useMemo(() => ({
+    id: "preview",
+    name: "학생용 화면 미리보기",
+    connected: true,
+    isSubmitted: false,
+    constitution,
+    history: []
+  }), [constitution]);
+  const group = preview ? previewGroup : liveGroup;
   const submitted = Boolean(group?.isSubmitted);
-  const controlsDisabled = submitted || !inputOpen;
+  const controlsDisabled = preview ? false : submitted || !inputOpen;
   const allChecked = new Set(checkedItems).size === SUBMIT_CHECKS.length;
 
   const canSubmit = useMemo(() => {
@@ -411,17 +422,21 @@ export default function StudentApp({ pin, groupId }) {
       WAGE_POLICY_OPTIONS.some(
         option => option.key === getWagePolicy(constitution).key
       ) &&
-      allChecked
+      allChecked &&
+      !preview
     );
-  }, [constitution, inputOpen, allChecked]);
+  }, [constitution, inputOpen, allChecked, preview]);
 
   const changeValue = async patch => {
     const next = { ...constitution, ...patch };
     setConstitution(next);
-    await updateConstitution(next);
+    if (!preview) {
+      await updateConstitution(next);
+    }
   };
 
   const handleSubmit = async () => {
+    if (preview) return;
     await submitConstitution(constitution);
   };
 
@@ -444,6 +459,12 @@ export default function StudentApp({ pin, groupId }) {
   return (
     <main className="student-page">
       <div className="student-content">
+      {preview && (
+        <section className="info-callout mb-5 text-base">
+          교사용 미리보기입니다. 이 화면에서는 학생 접속 기록이나 제출 기록이 바뀌지 않습니다.
+        </section>
+      )}
+
       <header className="student-header">
         <div className="flex items-center gap-4">
           <div className="brand-logo">붕</div>
@@ -474,7 +495,7 @@ export default function StudentApp({ pin, groupId }) {
       <EventCards cards={group?.result?.eventCards ?? []} />
       <PresentationCard group={group} />
 
-      {!inputOpen && !submitted && (
+      {!preview && !inputOpen && !submitted && (
         <div className="danger-callout mt-6 text-xl">
           지금은 정책을 제출하는 단계가 아닙니다. 교사의 안내를 기다려 주세요.
         </div>
@@ -562,7 +583,7 @@ export default function StudentApp({ pin, groupId }) {
           onClick={handleSubmit}
           className="button-primary flex h-24 w-full items-center justify-center text-4xl"
         >
-          {submitted ? "설계 제출 완료" : "이 설계로 제출하기"}
+          {preview ? "미리보기에서는 제출하지 않음" : submitted ? "설계 제출 완료" : "이 설계로 제출하기"}
         </button>
       </footer>
       </div>

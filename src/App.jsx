@@ -141,13 +141,14 @@ export default function App() {
   const pin = params.get("pin") || "";
   const groupId = params.get("groupId") || "group_1";
   const teacherPin = params.get("teacherPin") || "";
+  const preview = params.get("preview") === "1";
 
   if (role === "teacher") {
     return <TeacherDashboard pin={pin} teacherPin={teacherPin} />;
   }
 
   if (role === "student") {
-    return <StudentApp pin={pin} groupId={groupId} />;
+    return <StudentApp pin={pin} groupId={groupId} preview={preview} />;
   }
 
   return <StartScreen />;

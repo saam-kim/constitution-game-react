@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   SESSION_PHASES,
+  getPhaseDefaultSeconds,
   getTaxPolicy,
   getBudgetDirection,
   getWagePolicy,
@@ -8,7 +9,6 @@ import {
 } from "./useGameData";
 import { getAppPath } from "./routes";
 
-const SESSION_SECONDS = 5 * 60;
 const TEACHER_PIN = "1234";
 const AUTO_CREATE_LOCK_KEY = "constitution-game:auto-create-lock";
 
@@ -271,22 +271,42 @@ function InterpretationCard({ insight }) {
   );
 }
 
-function TimerStartPanel({ groupLocked, isRunning, remainingSeconds, onStart }) {
+function TimerStartPanel({
+  groupLocked,
+  isRunning,
+  phase,
+  remainingSeconds,
+  defaultSeconds,
+  onStart,
+  onSetTime
+}) {
+  const [minutesInput, setMinutesInput] = useState("");
+  const phaseName = phaseLabel(phase);
+
+  const applyMinutes = event => {
+    event.preventDefault();
+    if (minutesInput.trim() === "") return;
+    const minutes = Number(minutesInput);
+    if (!Number.isFinite(minutes) || minutes < 0) return;
+    onSetTime(Math.round(minutes * 60));
+    setMinutesInput("");
+  };
+
   return (
-    <section className="panel">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="panel timer-panel">
+      <div className="timer-panel-grid">
         <div>
           <p className="panel-label">수업 타이머</p>
           <h2 className="panel-heading">
             {isRunning ? "진행 중" : "시작 대기"}
           </h2>
           <p className="mt-2 text-sm font-bold muted">
-            {isRunning ? "타이머가 진행 중입니다." : "모둠 확정 후 수업 시작을 누르면 5분 타이머가 시작됩니다."}
+            {phaseName} 기본값은 {formatTime(defaultSeconds)}입니다. 수업 상황에 맞춰 남은 시간을 바로 조정할 수 있습니다.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="metric-card min-w-44 text-center">
+        <div className="timer-action-area">
+          <div className="metric-card timer-metric text-center">
             <p className="panel-label">남은 시간</p>
             <p className="mt-1 font-sans text-4xl font-black text-brand tabular-nums">
               {formatTime(remainingSeconds)}
@@ -296,11 +316,38 @@ function TimerStartPanel({ groupLocked, isRunning, remainingSeconds, onStart }) 
             type="button"
             onClick={onStart}
             disabled={!groupLocked || isRunning}
-            className="button-primary h-14 min-w-36 px-5 text-lg"
+            className="button-primary timer-start-button text-lg"
           >
             {isRunning ? "시작됨" : "수업 시작"}
           </button>
         </div>
+      </div>
+
+      <div className="timer-adjust-row">
+        <button type="button" className="timer-adjust-button" onClick={() => onSetTime(remainingSeconds - 60)}>
+          -1분
+        </button>
+        <button type="button" className="timer-adjust-button" onClick={() => onSetTime(remainingSeconds + 60)}>
+          +1분
+        </button>
+        <button type="button" className="timer-adjust-button" onClick={() => onSetTime(defaultSeconds)}>
+          기본값
+        </button>
+        <form className="timer-custom-form" onSubmit={applyMinutes}>
+          <input
+            type="number"
+            min="0"
+            max="90"
+            step="1"
+            value={minutesInput}
+            onChange={event => setMinutesInput(event.target.value)}
+            placeholder="분"
+            aria-label="남은 시간 분 단위 입력"
+          />
+          <button type="submit" className="button-secondary">
+            적용
+          </button>
+        </form>
       </div>
 
       {!groupLocked && (
@@ -509,6 +556,7 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
     remainingSeconds,
     selectGroup,
     setPhase,
+    setTimerSeconds,
     finalizeGroups,
     startSession,
     runRoulette,
@@ -530,6 +578,7 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
   const groupLocked = Boolean(session?.groupLocked);
   const isRunning = session?.status === "running";
   const isFinalPhase = phase === "final";
+  const defaultPhaseSeconds = getPhaseDefaultSeconds(phase);
 
   const handleCreate = async () => {
     if (autoCreateRef.current) return;
@@ -537,7 +586,7 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
 
     try {
       const created = await createSession({
-        durationSeconds: SESSION_SECONDS
+        durationSeconds: getPhaseDefaultSeconds("discussion")
       });
       const newPin = typeof created === "string" ? created : created.pin;
       setCreatedPin(newPin);
@@ -573,6 +622,25 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
     } else {
       setSetupMessage("수업 타이머가 시작되었습니다.");
     }
+  };
+
+  const openStudentPreview = () => {
+    const previewUrl = getAppPath({
+      role: "student",
+      pin,
+      preview: "1"
+    });
+    window.open(previewUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleSetTime = async seconds => {
+    const result = await setTimerSeconds(seconds);
+    if (!result.ok) {
+      setSetupMessage("세션을 찾을 수 없어 시간을 조정하지 못했습니다.");
+      return;
+    }
+
+    setSetupMessage(`남은 시간을 ${formatTime(result.durationSeconds)}로 조정했습니다.`);
   };
 
   const handleFinalizeGroups = async () => {
@@ -729,6 +797,13 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
         <div className="flex items-center gap-6">
           <button
             type="button"
+            onClick={openStudentPreview}
+            className="button-secondary h-12 px-4 text-sm"
+          >
+            학생용 화면 보기
+          </button>
+          <button
+            type="button"
             onClick={() => downloadDetailedCsv({ pin, groups: groupList })}
             className="button-secondary h-12 px-4 text-sm"
           >
@@ -799,8 +874,11 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
           <TimerStartPanel
             groupLocked={groupLocked}
             isRunning={isRunning}
+            phase={phase}
             remainingSeconds={remainingSeconds}
+            defaultSeconds={defaultPhaseSeconds}
             onStart={handleStartSession}
+            onSetTime={handleSetTime}
           />
 
           {setupMessage && (

@@ -309,6 +309,77 @@ button:active:not(:disabled) {
   text-transform: uppercase;
 }
 
+.timer-panel-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.timer-action-area {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 14px;
+}
+
+.timer-metric {
+  min-width: 176px;
+}
+
+.timer-start-button {
+  min-width: 144px;
+  min-height: 64px;
+  padding: 0 22px;
+}
+
+.timer-adjust-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.timer-adjust-button {
+  min-height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-soft);
+  padding: 0 14px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.timer-adjust-button:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.timer-custom-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timer-custom-form input {
+  width: 84px;
+  min-height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.timer-custom-form .button-secondary {
+  min-height: 42px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
 .muted {
   color: var(--color-text-muted);
 }
@@ -1046,8 +1117,13 @@ button:active:not(:disabled) {
   }
 
   .lesson-flow-header,
-  .result-panel-header {
+  .result-panel-header,
+  .timer-panel-grid {
     grid-template-columns: 1fr;
+  }
+
+  .timer-action-area {
+    justify-content: flex-start;
   }
 
   .sidebar {
@@ -1100,6 +1176,19 @@ button:active:not(:disabled) {
 
   .phase-grid {
     grid-template-columns: 1fr;
+  }
+
+  .timer-action-area,
+  .timer-custom-form {
+    width: 100%;
+  }
+
+  .timer-metric,
+  .timer-start-button,
+  .timer-custom-form input,
+  .timer-custom-form .button-secondary {
+    flex: 1 1 100%;
+    width: 100%;
   }
 
   .veil-card {

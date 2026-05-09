@@ -11,12 +11,15 @@ import {
 import { database, isFirebaseConfigured } from "./firebase";
 
 export const SESSION_PHASES = [
-  { key: "discussion", label: "토론", note: "모둠 입장과 쟁점 확인" },
-  { key: "constitution", label: "1차 설계", note: "정책 선택과 제출" },
-  { key: "result", label: "역할 공개", note: "미래의 나와 생활 모습 확인" },
-  { key: "revision", label: "2차 설계", note: "결과를 바탕으로 재토론" },
-  { key: "final", label: "설계 과정 및 결과 발표", note: "수정한 사회 설계 비교와 발표" }
+  { key: "discussion", label: "토론", note: "모둠 입장과 쟁점 확인", durationSeconds: 5 * 60 },
+  { key: "constitution", label: "1차 설계", note: "정책 선택과 제출", durationSeconds: 3 * 60 },
+  { key: "result", label: "역할 공개", note: "미래의 나와 생활 모습 확인", durationSeconds: 5 * 60 },
+  { key: "revision", label: "2차 설계", note: "결과를 바탕으로 재토론", durationSeconds: 5 * 60 },
+  { key: "final", label: "설계 과정 및 결과 발표", note: "수정한 사회 설계 비교와 발표", durationSeconds: 15 * 60 }
 ];
+
+export const getPhaseDefaultSeconds = phase =>
+  SESSION_PHASES.find(item => item.key === phase)?.durationSeconds ?? 5 * 60;
 
 export const INPUT_OPEN_PHASES = ["constitution", "revision"];
 
@@ -433,6 +436,21 @@ const pruneConnectedGroups = session => {
   };
 };
 
+const buildPhaseTimingPatch = (session, nextPhase, changedAt = Date.now()) => {
+  const durationSeconds = getPhaseDefaultSeconds(nextPhase);
+  const isRunning = session?.status === "running";
+
+  return {
+    phase: nextPhase,
+    phaseStartedAt: changedAt,
+    durationSeconds,
+    startedAt: isRunning ? changedAt : session?.startedAt ?? null,
+    endsAt: isRunning ? changedAt + durationSeconds * 1000 : null
+  };
+};
+
+const clampTimerSeconds = seconds => clamp(Math.round(Number(seconds) || 0), 0, 90 * 60);
+
 const prepareRevisionRound = session => {
   if ((session.currentRound ?? 1) >= 2) {
     return { ...session, phase: "revision", phaseStartedAt: Date.now() };
@@ -687,12 +705,12 @@ export function useGameData(pin, groupId = null) {
 
   const remainingSeconds = useMemo(() => {
     if (!session) return 0;
-    if (session.status !== "running") return session.durationSeconds ?? 300;
-    if (!session.endsAt) return session.durationSeconds ?? 300;
+    if (session.status !== "running") return session.durationSeconds ?? getPhaseDefaultSeconds(phase);
+    if (!session.endsAt) return session.durationSeconds ?? getPhaseDefaultSeconds(phase);
     return Math.max(0, Math.floor((session.endsAt - now) / 1000));
   }, [session, now]);
 
-  const createSession = async ({ groupCount = 8, durationSeconds = 300 } = {}) => {
+  const createSession = async ({ groupCount = 8, durationSeconds = getPhaseDefaultSeconds("discussion") } = {}) => {
     const createdAt = Date.now();
     const safeGroupCount = clamp(Number(groupCount) || 8, 4, 8);
 
@@ -742,7 +760,7 @@ export function useGameData(pin, groupId = null) {
       updateLocalSession(pin, current => {
         if (!current || current.status === "running") return current;
 
-        const durationSeconds = current.durationSeconds ?? 300;
+        const durationSeconds = current.durationSeconds ?? getPhaseDefaultSeconds(current.phase ?? "discussion");
         ok = true;
 
         return {
@@ -759,7 +777,7 @@ export function useGameData(pin, groupId = null) {
     const current = snapshot.val();
     if (!current || current.status === "running") return { ok: false };
 
-    const durationSeconds = current.durationSeconds ?? 300;
+    const durationSeconds = current.durationSeconds ?? getPhaseDefaultSeconds(current.phase ?? "discussion");
 
     await update(ref(database, `sessions/${pin}`), {
       status: "running",
@@ -770,34 +788,70 @@ export function useGameData(pin, groupId = null) {
     return { ok: true };
   };
 
+  const setTimerSeconds = async seconds => {
+    if (!pin) return { ok: false };
+
+    const durationSeconds = clampTimerSeconds(seconds);
+    const changedAt = Date.now();
+
+    if (!database) {
+      let ok = false;
+      updateLocalSession(pin, current => {
+        if (!current) return current;
+        ok = true;
+        const isRunning = current.status === "running";
+
+        return {
+          ...current,
+          durationSeconds,
+          endsAt: isRunning ? changedAt + durationSeconds * 1000 : null
+        };
+      });
+      return { ok, durationSeconds };
+    }
+
+    const snapshot = await get(ref(database, `sessions/${pin}`));
+    const current = snapshot.val();
+    if (!current) return { ok: false };
+
+    const isRunning = current.status === "running";
+    await update(ref(database, `sessions/${pin}`), {
+      durationSeconds,
+      endsAt: isRunning ? changedAt + durationSeconds * 1000 : null
+    });
+
+    return { ok: true, durationSeconds };
+  };
+
   const setPhase = async nextPhase => {
     if (!pin || !SESSION_PHASES.some(item => item.key === nextPhase)) return;
 
     if (!database) {
       updateLocalSession(pin, current => {
         if (!current) return current;
-        if (nextPhase === "revision") return prepareRevisionRound(current);
+        const baseSession = nextPhase === "revision" ? prepareRevisionRound(current) : current;
         return {
-          ...current,
-          phase: nextPhase,
-          phaseStartedAt: Date.now()
+          ...baseSession,
+          ...buildPhaseTimingPatch(baseSession, nextPhase)
         };
       });
       return;
     }
 
+    const snapshot = await get(ref(database, `sessions/${pin}`));
+    const current = snapshot.val();
+    if (!current) return;
+
     if (nextPhase === "revision") {
-      const snapshot = await get(ref(database, `sessions/${pin}`));
-      const current = snapshot.val();
-      if (!current) return;
-      await set(ref(database, `sessions/${pin}`), prepareRevisionRound(current));
+      const baseSession = prepareRevisionRound(current);
+      await set(ref(database, `sessions/${pin}`), {
+        ...baseSession,
+        ...buildPhaseTimingPatch(baseSession, nextPhase)
+      });
       return;
     }
 
-    await update(ref(database, `sessions/${pin}`), {
-      phase: nextPhase,
-      phaseStartedAt: Date.now()
-    });
+    await update(ref(database, `sessions/${pin}`), buildPhaseTimingPatch(current, nextPhase));
   };
 
   const finalizeGroups = async () => {
@@ -1065,6 +1119,7 @@ export function useGameData(pin, groupId = null) {
     remainingSeconds,
     createSession,
     startSession,
+    setTimerSeconds,
     setPhase,
     finalizeGroups,
     connectGroup,
