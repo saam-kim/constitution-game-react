@@ -146,7 +146,7 @@ function StudentInsightCards({ result }) {
 
 function FutureSelfCard({ group, phase }) {
   const futureSelf = group?.assignedClass;
-  const result = group?.result;
+  const result = group?.result ?? group?.history?.[0]?.result;
   const revealed = Boolean(futureSelf);
 
   if (!revealed) {
@@ -191,20 +191,20 @@ function FutureSelfCard({ group, phase }) {
 
       {result && (
         <div className="status-callout mt-5">
-          <p className="font-black">{"내 역할에서 본 1차 설계 결과"}</p>
+          <p className="font-black">{"내 역할에서 바라본 1차 설계"}</p>
           <p className="mt-2 leading-7">
             {result.classResult.message}
           </p>
         </div>
       )}
 
-      {phase === "revision" && (
+      {(phase === "secondDiscussion" || phase === "revision") && (
         <div className="info-callout mt-5">
           <div className="font-extrabold text-brand">?</div>
           <div>
             <p className="font-black">{"2\ucc28 \ud1a0\ub860"}</p>
             <p className="info-callout-body mt-1">
-              {"이제 공개된 역할을 기준으로 처음 만든 사회 설계가 정말 공정했는지 검토하세요."}
+              {"역할과 사건 카드를 바탕으로 처음 만든 사회 설계가 정말 공정했는지 검토하세요."}
             </p>
           </div>
         </div>
@@ -269,7 +269,7 @@ function NewsSummary({ cards = [] }) {
 
 function PresentationCard({ group }) {
   const firstRound = group?.history?.[0];
-  const result = group?.result;
+  const result = group?.result ?? group?.history?.[0]?.result;
   const eventCards = result?.eventCards ?? [];
 
   if (!firstRound && !result) return null;
@@ -406,6 +406,7 @@ export default function StudentApp({ pin, groupId, preview = false }) {
     history: []
   }), [constitution]);
   const group = preview ? previewGroup : liveGroup;
+  const visibleResult = group?.result ?? group?.history?.[0]?.result;
   const submitted = Boolean(group?.isSubmitted);
   const controlsDisabled = preview ? false : submitted || !inputOpen;
   const allChecked = new Set(checkedItems).size === SUBMIT_CHECKS.length;
@@ -491,13 +492,15 @@ export default function StudentApp({ pin, groupId, preview = false }) {
       </header>
 
       <FutureSelfCard group={group} phase={phase} />
-      <StudentInsightCards result={group?.result} />
-      <EventCards cards={group?.result?.eventCards ?? []} />
+      <StudentInsightCards result={visibleResult} />
+      <EventCards cards={visibleResult?.eventCards ?? []} />
       <PresentationCard group={group} />
 
       {!preview && !inputOpen && !submitted && (
-        <div className="danger-callout mt-6 text-xl">
-          지금은 정책을 제출하는 단계가 아닙니다. 교사의 안내를 기다려 주세요.
+        <div className={`${phase === "secondDiscussion" ? "info-callout" : "danger-callout"} mt-6 text-xl`}>
+          {phase === "secondDiscussion"
+            ? "지금은 2차 토론 단계입니다. 역할과 사건 카드를 바탕으로 어떤 선택을 바꿀지 먼저 토론하세요."
+            : "지금은 정책을 제출하는 단계가 아닙니다. 교사의 안내를 기다려 주세요."}
         </div>
       )}
 

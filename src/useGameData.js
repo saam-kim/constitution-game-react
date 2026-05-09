@@ -14,7 +14,8 @@ export const SESSION_PHASES = [
   { key: "discussion", label: "토론", note: "모둠 입장과 쟁점 확인", durationSeconds: 5 * 60 },
   { key: "constitution", label: "1차 설계", note: "정책 선택과 제출", durationSeconds: 3 * 60 },
   { key: "result", label: "역할 공개", note: "미래의 나와 생활 모습 확인", durationSeconds: 5 * 60 },
-  { key: "revision", label: "2차 설계", note: "결과를 바탕으로 재토론", durationSeconds: 5 * 60 },
+  { key: "secondDiscussion", label: "2차 토론", note: "역할과 사건을 바탕으로 재토론", durationSeconds: 5 * 60 },
+  { key: "revision", label: "2차 설계", note: "수정한 정책 선택과 제출", durationSeconds: 3 * 60 },
   { key: "final", label: "설계 과정 및 결과 발표", note: "수정한 사회 설계 비교와 발표", durationSeconds: 15 * 60 }
 ];
 
@@ -451,9 +452,9 @@ const buildPhaseTimingPatch = (session, nextPhase, changedAt = Date.now()) => {
 
 const clampTimerSeconds = seconds => clamp(Math.round(Number(seconds) || 0), 0, 90 * 60);
 
-const prepareRevisionRound = session => {
+const prepareRevisionRound = (session, nextPhase = "secondDiscussion") => {
   if ((session.currentRound ?? 1) >= 2) {
-    return { ...session, phase: "revision", phaseStartedAt: Date.now() };
+    return { ...session, phase: nextPhase, phaseStartedAt: Date.now() };
   }
 
   const groups = Object.fromEntries(
@@ -487,7 +488,7 @@ const prepareRevisionRound = session => {
   return {
     ...session,
     currentRound: 2,
-    phase: "revision",
+    phase: nextPhase,
     phaseStartedAt: Date.now(),
     groups
   };
@@ -708,7 +709,7 @@ export function useGameData(pin, groupId = null) {
     if (session.status !== "running") return session.durationSeconds ?? getPhaseDefaultSeconds(phase);
     if (!session.endsAt) return session.durationSeconds ?? getPhaseDefaultSeconds(phase);
     return Math.max(0, Math.floor((session.endsAt - now) / 1000));
-  }, [session, now]);
+  }, [session, now, phase]);
 
   const createSession = async ({ groupCount = 8, durationSeconds = getPhaseDefaultSeconds("discussion") } = {}) => {
     const createdAt = Date.now();
@@ -829,7 +830,12 @@ export function useGameData(pin, groupId = null) {
     if (!database) {
       updateLocalSession(pin, current => {
         if (!current) return current;
-        const baseSession = nextPhase === "revision" ? prepareRevisionRound(current) : current;
+        const shouldPrepareSecondRound =
+          nextPhase === "secondDiscussion" ||
+          (nextPhase === "revision" && (current.currentRound ?? 1) < 2);
+        const baseSession = shouldPrepareSecondRound
+          ? prepareRevisionRound(current, nextPhase)
+          : current;
         return {
           ...baseSession,
           ...buildPhaseTimingPatch(baseSession, nextPhase)
@@ -842,8 +848,12 @@ export function useGameData(pin, groupId = null) {
     const current = snapshot.val();
     if (!current) return;
 
-    if (nextPhase === "revision") {
-      const baseSession = prepareRevisionRound(current);
+    const shouldPrepareSecondRound =
+      nextPhase === "secondDiscussion" ||
+      (nextPhase === "revision" && (current.currentRound ?? 1) < 2);
+
+    if (shouldPrepareSecondRound) {
+      const baseSession = prepareRevisionRound(current, nextPhase);
       await set(ref(database, `sessions/${pin}`), {
         ...baseSession,
         ...buildPhaseTimingPatch(baseSession, nextPhase)

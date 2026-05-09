@@ -73,8 +73,8 @@ const downloadCsv = ({ pin, groups }) => {
     "가장 불리한 시민도 버틸 수 있는가?",
     "경제 활동의 자유는 얼마나 남아 있는가?",
     "모두가 이 규칙을 받아들일 수 있는가?",
-    "종합 해석",
-    "해석 메시지"
+    "역할 관점 해석",
+    "역할 관점 메시지"
   ];
 
   const rows = groups.map(group => [
@@ -127,8 +127,8 @@ const downloadDetailedCsv = ({ pin, groups }) => {
     "가장 불리한 시민도 버틸 수 있는가?",
     "경제 활동의 자유는 얼마나 남아 있는가?",
     "모두가 이 규칙을 받아들일 수 있는가?",
-    "종합 해석",
-    "해석 메시지",
+    "역할 관점 해석",
+    "역할 관점 메시지",
     "사건 카드 1",
     "사건 카드 2",
     "사건 카드 3"
@@ -370,7 +370,7 @@ function PhaseControls({ phase, onChange }) {
           <p className="panel-label">수업 흐름</p>
           <h2 className="panel-heading mt-1">현재 단계: {phaseLabel(phase)}</h2>
           <p className="mt-2 font-bold muted">
-            1차 설계 → 역할 공개 → 생활 모습 확인 → 사건 검토 → 2차 설계 → 발표
+            토론 → 1차 설계 → 역할 공개 → 2차 토론 → 2차 설계 → 발표
           </p>
         </div>
         <button
@@ -578,6 +578,21 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
   const groupLocked = Boolean(session?.groupLocked);
   const isRunning = session?.status === "running";
   const isFinalPhase = phase === "final";
+  const discussionReviewPhase = phase === "secondDiscussion" || phase === "revision";
+  const displayResult = selectedGroup?.result ?? (discussionReviewPhase ? selectedGroup?.history?.[0]?.result : null);
+  const resultActionLabel = phase === "secondDiscussion"
+    ? "2차 토론 진행 중"
+    : phase === "revision"
+      ? "2차 설계 진행 중"
+      : selectedGroup?.rouletteDone
+      ? isFinalPhase
+        ? "2차 설계 결과 확인 완료"
+        : "미래의 나 공개 완료"
+      : rolling
+        ? "미래의 나 공개 중"
+        : isFinalPhase
+          ? "2차 설계 결과 확인"
+          : "미래의 나 공개";
   const defaultPhaseSeconds = getPhaseDefaultSeconds(phase);
 
   const handleCreate = async () => {
@@ -904,20 +919,12 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
                 <button
                   type="button"
                   disabled={
-                    rolling || !selectedGroup?.isSubmitted || selectedGroup?.rouletteDone
+                    rolling || !selectedGroup?.isSubmitted || selectedGroup?.rouletteDone || phase === "secondDiscussion" || phase === "revision"
                   }
                   onClick={handleRoulette}
                   className="button-primary h-20 w-full text-2xl"
                 >
-                  {selectedGroup?.rouletteDone
-                    ? isFinalPhase
-                      ? "2차 설계 결과 확인 완료"
-                      : "미래의 나 공개 완료"
-                    : rolling
-                      ? "미래의 나 공개 중"
-                      : isFinalPhase
-                        ? "2차 설계 결과 확인"
-                        : "미래의 나 공개"}
+                  {resultActionLabel}
                 </button>
 
                 <div className="metric-card text-center">
@@ -930,27 +937,29 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
 
               <FutureSelfPanel selectedGroup={selectedGroup} />
 
-              {selectedGroup?.result ? (
+              {displayResult ? (
                 <div className="result-score-layout narrative-result-layout">
                   <div className="result-score-grid narrative-result-grid">
                     <InterpretationCard
-                      insight={getSurvivalInsight(selectedGroup.result.survivalIndex)}
+                      insight={getSurvivalInsight(displayResult.survivalIndex)}
                     />
                     <InterpretationCard
-                      insight={getFreedomInsight(selectedGroup.result.assetGrowth)}
+                      insight={getFreedomInsight(displayResult.assetGrowth)}
                     />
                     <InterpretationCard
-                      insight={getIntegrationInsight(selectedGroup.result.socialIntegration)}
+                      insight={getIntegrationInsight(displayResult.socialIntegration)}
                     />
 
-                    <div className="interpretation-card result-final-card narrative-final-card">
-                      <p className="panel-label">종합 해석</p>
+                    <div className="interpretation-card result-final-card narrative-final-card role-reflection-card">
+                      <p className="panel-label">역할 공개 후 성찰</p>
                       <h3>
-                        {selectedGroup.result.classResult.label} 역할에서 본 사회 설계
+                        내 역할에서 바라본 1차 설계
                       </h3>
-                      <p>{selectedGroup.result.classResult.message}</p>
+                      <p>
+                        {displayResult.classResult.label} 입장에서 보면 {displayResult.classResult.message}
+                      </p>
                       <strong>
-                        발표에서는 1차 선택과 2차 선택이 어떻게 달라졌는지, 그 변화가 나와 다른 시민 모두에게 왜 설득력 있는지 설명해 보세요.
+                        이 설계가 나에게 어떤 이익과 부담으로 느껴지는지, 그리고 다른 위치의 시민에게도 설명 가능한지 따져보세요.
                       </strong>
                     </div>
                   </div>
@@ -965,7 +974,7 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
             </div>
           </section>
 
-          <TeacherEventCards cards={selectedGroup?.result?.eventCards ?? []} />
+          <TeacherEventCards cards={displayResult?.eventCards ?? []} />
 
           <ComparisonTable
             groups={groupList}

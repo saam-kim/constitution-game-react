@@ -386,7 +386,7 @@ button:active:not(:disabled) {
 
 .phase-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -667,19 +667,11 @@ button:active:not(:disabled) {
   box-shadow: var(--shadow-sm);
 }
 
-.event-card.good {
-  border-color: rgba(46, 125, 79, 0.42);
-  background: #f2fbf5;
-}
-
-.event-card.warning {
-  border-color: rgba(204, 51, 68, 0.34);
-  background: #fff6f7;
-}
-
+.event-card.good,
+.event-card.warning,
 .event-card.mixed {
-  border-color: rgba(27, 107, 255, 0.34);
-  background: #f5f8ff;
+  border-color: var(--color-border);
+  background: white;
 }
 
 .event-card-label {
