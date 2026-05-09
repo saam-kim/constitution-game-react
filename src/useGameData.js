@@ -320,13 +320,47 @@ const buildEventCards = ({ constitution, survivalIndex, assetGrowth, socialInteg
     });
   }
 
-  if (cards.length === 0) {
-    cards.push({
+  const supplementalCards = [
+    {
+      type: "mixed",
+      title: "세금 부담은 비교적 안정적으로 나뉘었습니다",
+      body:
+        "세금이 너무 낮거나 높지는 않지만, 각 시민이 느끼는 부담과 혜택은 다를 수 있습니다.",
+      question: "현재 세금 부담을 각 역할에게 어떻게 설명할 수 있나요?"
+    },
+    {
+      type: "mixed",
+      title: "최저임금 변화는 완만하게 적용됩니다",
+      body:
+        "일자리와 생활 안정 사이에서 급격한 충돌은 줄었지만, 저임금 노동자에게 충분한지 따져볼 필요가 있습니다.",
+      question: "이 최저임금 방향은 노동자와 고용자 모두에게 납득 가능한가요?"
+    },
+    {
+      type: "mixed",
+      title: "서로 다른 시민의 평가가 갈릴 수 있습니다",
+      body:
+        "같은 제도라도 역할에 따라 안정, 부담, 기회가 다르게 느껴질 수 있습니다.",
+      question: "가장 설득하기 어려운 시민은 누구이고, 그 이유는 무엇인가요?"
+    },
+    {
       type: "mixed",
       title: "큰 위기는 없지만 설득력 있는 이유가 필요합니다",
       body:
         "정책 수치가 극단적이지 않아 사회는 급격히 흔들리지 않았습니다. 이제 왜 이 균형이 공정한지 설명해야 합니다.",
       question: "우리 모둠의 사회 원칙을 한 문장으로 말하면 무엇인가요?"
+    }
+  ];
+
+  supplementalCards.forEach((supplementalCard) => {
+    if (cards.length < 3 && !cards.some((card) => card.title === supplementalCard.title)) {
+      cards.push(supplementalCard);
+    }
+  });
+
+  while (cards.length < 3) {
+    cards.push({
+      ...supplementalCards[cards.length % supplementalCards.length],
+      title: `추가 점검 ${cards.length + 1}`
     });
   }
 
