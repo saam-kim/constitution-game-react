@@ -593,6 +593,7 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
         : isFinalPhase
           ? "2차 설계 결과 확인"
           : "미래의 나 공개";
+  const canOpenPresentation = Boolean(selectedGroup?.history?.[0] && selectedGroup?.isSubmitted);
   const defaultPhaseSeconds = getPhaseDefaultSeconds(phase);
 
   const handleCreate = async () => {
@@ -646,6 +647,27 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
       preview: "1"
     });
     window.open(previewUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const openPresentationView = () => {
+    if (!selectedGroup?.id || !canOpenPresentation) return;
+
+    const presentationUrl = getAppPath({
+      role: "student",
+      pin,
+      groupId: selectedGroup.id,
+      presentation: "1"
+    });
+    window.open(presentationUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const openPresentationPreview = () => {
+    const presentationUrl = getAppPath({
+      role: "student",
+      presentation: "1",
+      example: "1"
+    });
+    window.open(presentationUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleSetTime = async seconds => {
@@ -819,6 +841,13 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
           </button>
           <button
             type="button"
+            onClick={openPresentationPreview}
+            className="button-secondary h-12 px-4 text-sm"
+          >
+            발표 화면 미리보기
+          </button>
+          <button
+            type="button"
             onClick={() => downloadDetailedCsv({ pin, groups: groupList })}
             className="button-secondary h-12 px-4 text-sm"
           >
@@ -910,9 +939,19 @@ export default function TeacherDashboard({ pin, teacherPin = "" }) {
                 <p className="panel-label">선택한 모둠</p>
                 <h2 className="panel-heading mt-1">{selectedGroup?.name ?? "모둠 선택"} 활동 결과</h2>
               </div>
-              <p className="text-sm font-bold muted">
-                사이드바에서 모둠을 선택해 결과와 발표 자료를 확인합니다.
-              </p>
+              <div className="result-header-actions">
+                <p className="text-sm font-bold muted">
+                  2차 설계 제출 후 발표 자료를 새 탭으로 열 수 있습니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={openPresentationView}
+                  disabled={!canOpenPresentation}
+                  className="button-secondary h-12 px-4 text-sm"
+                >
+                  발표 자료 보기
+                </button>
+              </div>
             </div>
             <div className="result-overview mt-5">
               <div className="result-action-row">

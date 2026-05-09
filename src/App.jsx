@@ -142,13 +142,23 @@ export default function App() {
   const groupId = params.get("groupId") || "group_1";
   const teacherPin = params.get("teacherPin") || "";
   const preview = params.get("preview") === "1";
+  const presentation = params.get("presentation") === "1";
+  const presentationExample = params.get("example") === "1";
 
   if (role === "teacher") {
     return <TeacherDashboard pin={pin} teacherPin={teacherPin} />;
   }
 
   if (role === "student") {
-    return <StudentApp pin={pin} groupId={groupId} preview={preview} />;
+    return (
+      <StudentApp
+        pin={pin}
+        groupId={groupId}
+        preview={preview}
+        presentationOnly={presentation}
+        presentationExample={presentationExample}
+      />
+    );
   }
 
   return <StartScreen />;

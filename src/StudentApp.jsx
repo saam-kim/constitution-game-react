@@ -272,7 +272,17 @@ function PresentationCard({ group }) {
   const result = group?.result ?? group?.history?.[0]?.result;
   const eventCards = result?.eventCards ?? [];
 
-  if (!firstRound && !result) return null;
+  if (!firstRound && !result) {
+    return (
+      <section className="panel mt-6">
+        <p className="panel-label">{"발표 준비 카드"}</p>
+        <h2 className="panel-heading mt-1">{"우리 모둠 발표 흐름"}</h2>
+        <p className="status-callout mt-5 text-base">
+          1차 결과와 2차 설계가 쌓이면 발표에 사용할 카드가 이 화면에 표시됩니다.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="panel mt-6">
@@ -346,7 +356,13 @@ function PolicyChoiceControl({ label, valueLabel, options, selectedKey, info, di
   );
 }
 
-export default function StudentApp({ pin, groupId, preview = false }) {
+export default function StudentApp({
+  pin,
+  groupId,
+  preview = false,
+  presentationOnly = false,
+  presentationExample = false
+}) {
   const {
     group: liveGroup,
     loading,
@@ -356,7 +372,7 @@ export default function StudentApp({ pin, groupId, preview = false }) {
     connectGroup,
     updateConstitution,
     submitConstitution
-  } = useGameData(pin, preview ? null : groupId);
+  } = useGameData(presentationExample ? "" : pin, preview || presentationExample ? null : groupId);
 
   const [constitution, setConstitution] = useState({
     taxPolicy: "shared",
@@ -369,10 +385,10 @@ export default function StudentApp({ pin, groupId, preview = false }) {
   const [checkedItems, setCheckedItems] = useState([]);
 
   useEffect(() => {
-    if (!preview) {
+    if (!preview && !presentationOnly && !presentationExample) {
       connectGroup();
     }
-  }, [preview]);
+  }, [preview, presentationOnly, presentationExample]);
 
   useEffect(() => {
     if (liveGroup?.constitution) {
@@ -405,10 +421,10 @@ export default function StudentApp({ pin, groupId, preview = false }) {
     constitution,
     history: []
   }), [constitution]);
-  const group = preview ? previewGroup : liveGroup;
+  const group = presentationExample ? SAMPLE_PRESENTATION_GROUP : preview ? previewGroup : liveGroup;
   const visibleResult = group?.result ?? group?.history?.[0]?.result;
   const submitted = Boolean(group?.isSubmitted);
-  const controlsDisabled = preview ? false : submitted || !inputOpen;
+  const controlsDisabled = presentationOnly ? true : preview ? false : submitted || !inputOpen;
   const allChecked = new Set(checkedItems).size === SUBMIT_CHECKS.length;
 
   const canSubmit = useMemo(() => {
@@ -424,20 +440,21 @@ export default function StudentApp({ pin, groupId, preview = false }) {
         option => option.key === getWagePolicy(constitution).key
       ) &&
       allChecked &&
-      !preview
+      !preview &&
+      !presentationOnly
     );
-  }, [constitution, inputOpen, allChecked, preview]);
+  }, [constitution, inputOpen, allChecked, preview, presentationOnly]);
 
   const changeValue = async patch => {
     const next = { ...constitution, ...patch };
     setConstitution(next);
-    if (!preview) {
+    if (!preview && !presentationOnly && !presentationExample) {
       await updateConstitution(next);
     }
   };
 
   const handleSubmit = async () => {
-    if (preview) return;
+    if (preview || presentationOnly) return;
     await submitConstitution(constitution);
   };
 
@@ -453,6 +470,26 @@ export default function StudentApp({ pin, groupId, preview = false }) {
     return (
       <main className="center-page app-page p-6 text-center text-3xl font-bold text-red-700">
         모둠 정보를 찾을 수 없습니다. 이미 모둠이 확정되었거나 PIN을 다시 확인해야 합니다.
+      </main>
+    );
+  }
+
+  if (presentationOnly) {
+    return (
+      <main className="student-page presentation-page">
+        <div className="student-content">
+          <header className="student-header presentation-header">
+            <div className="flex items-center gap-4">
+              <div className="brand-logo">붕</div>
+              <div>
+                <p className="brand-kicker">발표 자료</p>
+                <h1 className="brand-title">{group.name} 활동 발표</h1>
+              </div>
+            </div>
+          </header>
+
+          <PresentationCard group={group} />
+        </div>
       </main>
     );
   }
@@ -586,7 +623,7 @@ export default function StudentApp({ pin, groupId, preview = false }) {
           onClick={handleSubmit}
           className="button-primary flex h-24 w-full items-center justify-center text-4xl"
         >
-          {preview ? "미리보기에서는 제출하지 않음" : submitted ? "설계 제출 완료" : "이 설계로 제출하기"}
+          {presentationOnly ? "발표 모드에서는 제출하지 않음" : preview ? "미리보기에서는 제출하지 않음" : submitted ? "설계 제출 완료" : "이 설계로 제출하기"}
         </button>
       </footer>
       </div>
