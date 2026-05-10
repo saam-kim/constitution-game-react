@@ -9,6 +9,7 @@ export const TEACHER_PIN = "1234";
 function StartScreen() {
   const [role, setRole] = useState("teacher");
   const [pin, setPin] = useState("");
+  const [restorePin, setRestorePin] = useState("");
   const [groupId, setGroupId] = useState("group_1");
   const [message, setMessage] = useState("");
 
@@ -32,6 +33,24 @@ function StartScreen() {
     }
   };
 
+  const openExistingTeacherSession = () => {
+    if (pin !== TEACHER_PIN) {
+      setMessage("교사용 PIN을 먼저 입력해 주세요.");
+      return;
+    }
+
+    if (restorePin.length !== 6) {
+      setMessage("복구할 6자리 세션 코드를 입력해 주세요.");
+      return;
+    }
+
+    window.location.href = getAppPath({
+      role: "teacher",
+      teacherPin: TEACHER_PIN,
+      pin: restorePin
+    });
+  };
+
   return (
     <main className="app-page center-page">
       <section className="brand-card">
@@ -49,6 +68,7 @@ function StartScreen() {
             onClick={() => {
               setRole("teacher");
               setPin("");
+              setRestorePin("");
               setMessage("");
             }}
             className={`h-14 button-secondary ${role === "teacher" ? "active" : ""}`}
@@ -60,6 +80,7 @@ function StartScreen() {
             onClick={() => {
               setRole("student");
               setPin("");
+              setRestorePin("");
               setMessage("");
             }}
             className={`h-14 button-secondary ${role === "student" ? "active" : ""}`}
@@ -112,6 +133,30 @@ function StartScreen() {
         >
           입장
         </button>
+
+        {role === "teacher" && (
+          <div className="mt-6 border-t border-[var(--color-border)] pt-5">
+            <label className="field-label">
+              기존 세션 코드
+              <input
+                value={restorePin}
+                onChange={event => {
+                  setMessage("");
+                  setRestorePin(event.target.value.replace(/\D/g, "").slice(0, 6));
+                }}
+                placeholder="복구할 6자리 코드"
+                className="field-control"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={openExistingTeacherSession}
+              className="button-secondary mt-3 h-12 w-full text-base"
+            >
+              기존 교사 세션 열기
+            </button>
+          </div>
+        )}
 
         {message && <p className="danger-callout mt-4 text-base">{message}</p>}
 
